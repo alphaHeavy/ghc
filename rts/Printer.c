@@ -14,6 +14,8 @@
 #include "RtsUtils.h"
 
 #include <string.h>
+#include <setjmp.h>
+#include <mach/mach.h>
 
 #ifdef DEBUG
 
@@ -119,7 +121,7 @@ printClosure( StgClosure *obj )
 
     switch ( info->type ) {
     case INVALID_OBJECT:
-            barf("Invalid object");
+            debugBelch("Invalid object");
 
     case CONSTR:
     case CONSTR_1_0: case CONSTR_0_1:
@@ -956,6 +958,70 @@ findPtr(P_ p, int follow)
       debugBelch("-->\n");
       findPtr(arr[0], 1);
   }
+}
+
+static jmp_buf jmpbuf;
+void segvHandler (int signo);
+void segvHandler (int signo)
+{
+  siglongjmp(jmpbuf, 1);
+}
+
+void printHeapChunk (bdescr *bd);
+
+void printHeapChunk (bdescr *bd)
+{
+  volatile StgPtr q;
+  for ( ; bd; bd = bd->link) {
+    for (q = bd->start; q < bd->free; ++q) {
+      if (sigsetjmp(jmpbuf, 1) == 0)
+      {
+      for ( ; q < bd->free && *q == 0; ++q)
+        ; // skip over zeroed-out slop
+
+      if (*q == 0) {
+        continue;
+      }
+
+      if (!LOOKS_LIKE_CLOSURE_PTR(q)) {
+        // debugBelch("%p found at %p, no closure at %p\n", p, q, r);
+        continue;
+      }
+
+      StgPtr end = q + closure_sizeW((StgClosure*)q);
+      if (end >= bd->free) {
+        // debugBelch("%p found at %p, closure?", p, q);
+        continue;
+      }
+
+      debugBelch("%p = ", q);
+      printClosure((StgClosure *)q);
+      }
+    }
+  }
+}
+
+void printHeap (void)
+{
+  kern_return_t kret = task_set_exception_ports(
+    mach_task_self(),
+    EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION | EXC_MASK_ARITHMETIC,
+    MACH_PORT_NULL,
+    EXCEPTION_STATE_IDENTITY,
+    MACHINE_THREAD_STATE);
+
+  if (kret != KERN_SUCCESS) {
+    debugBelch("Could not disable CrashReporter. Mach error code %d\n", (int)kret);
+  }
+
+  sig_t oldSignal;
+  nat g;
+  oldSignal = signal(SIGSEGV, segvHandler);
+  for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
+      printHeapChunk(generations[g].blocks);
+      printHeapChunk(generations[g].large_objects);
+  }
+  signal(SIGSEGV, oldSignal);
 }
 
 /* prettyPrintClosure() is for printing out a closure using the data constructor

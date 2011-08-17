@@ -26,6 +26,7 @@ extern void   	   printClosure    ( StgClosure *obj );
 extern StgPtr      printStackObj   ( StgPtr sp );
 extern void        printStackChunk ( StgPtr sp, StgPtr spLim );
 extern void        printTSO        ( StgTSO *tso );
+extern void        printHeap       ( void );
 
 extern void DEBUG_LoadSymbols( char *name );
 
