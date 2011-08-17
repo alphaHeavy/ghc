@@ -134,12 +134,16 @@ printClosure( StgClosure *obj )
 
             debugBelch("%s(", GET_CON_DESC(con_info));
             for (i = 0; i < info->layout.payload.ptrs; ++i) {
-		if (i != 0) debugBelch(", ");
-                printPtr((StgPtr)obj->payload[i]);
+                if (obj->payload[i] != 0) {
+		    if (i != 0) debugBelch(", ");
+                    printPtr((StgPtr)obj->payload[i]);
+                }
             }
             for (j = 0; j < info->layout.payload.nptrs; ++j) {
-		if (i != 0 || j != 0) debugBelch(", ");
-                debugBelch("%p#", obj->payload[i+j]);
+                if (obj->payload[i+j] != 0) {
+		    if (i != 0 || j != 0) debugBelch(", ");
+                    debugBelch("%p#", obj->payload[i+j]);
+                }
             }
             debugBelch(")\n");
             break;
@@ -369,7 +373,7 @@ printClosure( StgClosure *obj )
             //barf("printClosure %d",get_itbl(obj)->type);
             debugBelch("*** printClosure: unknown type %d ****\n",
                     get_itbl(obj)->type );
-            barf("printClosure %d",get_itbl(obj)->type);
+            debugBelch("printClosure %d",get_itbl(obj)->type);
             return;
     }
 }
@@ -976,29 +980,29 @@ void printHeapChunk (bdescr *bd)
     for (q = bd->start; q < bd->free; ++q) {
       if (sigsetjmp(jmpbuf, 1) == 0)
       {
-      for ( ; q < bd->free && *q == 0; ++q)
-        ; // skip over zeroed-out slop
+        for ( ; q < bd->free && *q == 0; ++q)
+          ; // skip over zeroed-out slop
 
-      if (*q == 0) {
-        continue;
-      }
+        if (*q == 0) {
+          continue;
+        }
 
-      if (!LOOKS_LIKE_CLOSURE_PTR(q)) {
-        // debugBelch("%p found at %p, no closure at %p\n", p, q, r);
-        continue;
-      }
+        if (!LOOKS_LIKE_CLOSURE_PTR(q)) {
+          // debugBelch("%p found at %p, no closure at %p\n", p, q, r);
+          continue;
+        }
 
-      StgPtr end = q + closure_sizeW((StgClosure*)q);
-      if (end >= bd->free) {
-        // debugBelch("%p found at %p, closure?", p, q);
-        continue;
-      }
+        StgPtr end = q + closure_sizeW((StgClosure*)q);
+        if (end >= bd->free) {
+          // debugBelch("%p found at %p, closure?", p, q);
+          continue;
+        }
 
-      debugBelch("%p = ", q);
-      printClosure((StgClosure *)q);
+        debugBelch("%p = ", q);
+        printClosure((StgClosure *)q);
       }
     }
-  }
+  } 
 }
 
 void printHeap (void)
@@ -1014,14 +1018,19 @@ void printHeap (void)
     debugBelch("Could not disable CrashReporter. Mach error code %d\n", (int)kret);
   }
 
-  sig_t oldSignal;
+  sig_t oldSIGSEGV;
+  sig_t oldSIGBUS;
+  oldSIGSEGV = signal(SIGSEGV, segvHandler);
+  oldSIGBUS = signal(SIGBUS, segvHandler);
   nat g;
-  oldSignal = signal(SIGSEGV, segvHandler);
+
   for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
       printHeapChunk(generations[g].blocks);
       printHeapChunk(generations[g].large_objects);
   }
-  signal(SIGSEGV, oldSignal);
+
+  signal(SIGSEGV, oldSIGSEGV);
+  signal(SIGBUS, oldSIGBUS);
 }
 
 /* prettyPrintClosure() is for printing out a closure using the data constructor
