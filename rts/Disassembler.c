@@ -239,7 +239,7 @@ disInstr ( StgBCO *bco, int pc )
 	 break;
 
       default:
-         barf("disInstr: unknown opcode %u", (unsigned int) instr);
+         debugBelch("UNKNOWN OPCODE: %u\n", (unsigned int) instr);
    }
    return pc;
 }

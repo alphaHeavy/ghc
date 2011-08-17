@@ -121,7 +121,8 @@ printClosure( StgClosure *obj )
 
     switch ( info->type ) {
     case INVALID_OBJECT:
-            debugBelch("Invalid object");
+            debugBelch("Invalid object\n");
+            break;
 
     case CONSTR:
     case CONSTR_1_0: case CONSTR_0_1:
@@ -252,13 +253,25 @@ printClosure( StgClosure *obj )
             debugBelch(")\n"); 
             break;
 
-    /* Cannot happen -- use default case.
     case RET_BCO:
+            debugBelch("RET_BCO()\n"); 
+            break;
+
     case RET_SMALL:
+            debugBelch("RET_SMALL()\n"); 
+            break;
+
     case RET_BIG:
+            debugBelch("RET_BIG()\n"); 
+            break;
+
     case RET_DYN:
+            debugBelch("RET_DYN()\n"); 
+            break;
+
     case RET_FUN:
-    */
+            debugBelch("RET_FUN()\n"); 
+            break;
 
     case UPDATE_FRAME:
         {
@@ -304,8 +317,19 @@ printClosure( StgClosure *obj )
         {
             StgWord i;
             debugBelch("ARR_WORDS(\"");
-	    for (i=0; i<arr_words_words((StgArrWords *)obj); i++)
-	      debugBelch("%lu", (lnat)((StgArrWords *)obj)->payload[i]);
+            char* fmt = "%c";
+            for (i=0; i<arr_words_words((StgArrWords *)obj); i++) {
+              lnat v = (lnat)((StgArrWords *)obj)->payload[i];
+              if (v != 0 && (v < 0x20 || v > 0x7F)) {
+                // binhex
+                fmt = "%02x";
+                break;
+              } 
+            } 
+
+            for (i=0; i<arr_words_words((StgArrWords *)obj); i++) {
+              debugBelch(fmt, (lnat)((StgArrWords *)obj)->payload[i]);
+            }
             debugBelch("\")\n");
             break;
         }
@@ -357,6 +381,12 @@ printClosure( StgClosure *obj )
     case TSO:
       debugBelch("TSO("); 
       debugBelch("%lu (%p)",(unsigned long)(((StgTSO*)obj)->id), (StgTSO*)obj);
+      debugBelch(")\n"); 
+      break;
+
+    case STACK:
+      debugBelch("STACK(");
+      debugBelch("size=%lu",(unsigned long)(((StgStack*)obj)->stack_size));
       debugBelch(")\n"); 
       break;
 
@@ -968,6 +998,7 @@ static jmp_buf jmpbuf;
 void segvHandler (int signo);
 void segvHandler (int signo)
 {
+  debugBelch("<<%s>>\n", strsignal(signo));
   siglongjmp(jmpbuf, 1);
 }
 
