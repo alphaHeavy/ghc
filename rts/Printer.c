@@ -51,11 +51,19 @@ printPtr (const StgClosure *obj)
 {
 }
 
+static void
+writePointerAttribute(xmlTextWriterPtr writer, const char *name, StgPtr value)
+{
+    if (value != 0) {
+        xmlTextWriterWriteFormatAttribute(writer, name, "%p", value);
+    }
+}
+
 STATIC_INLINE void
 printStdObjHdr (xmlTextWriterPtr writer, const StgClosure *obj, const char* tag)
 {
     xmlTextWriterWriteAttribute(writer, "tag", tag);
-    xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)obj->header.info));
+    writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
 #ifdef PROFILING
     xmlTextWriterWriteAttribute(writer, "label", obj->header.prof.ccs->cc->label);
 #endif
@@ -66,23 +74,23 @@ printInfoTablePayload (xmlTextWriterPtr writer, const StgInfoTable* info, const 
 {
     xmlTextWriterWriteFormatAttribute(writer, "ptrs", "%lu", info->layout.payload.ptrs);
     xmlTextWriterWriteFormatAttribute(writer, "nptrs", "%lu", info->layout.payload.nptrs);
-#if 0
     StgWord i;
     for (i = 0; i < info->layout.payload.ptrs; ++i) {
-        xmlTextWriterStartElement(writer, "payload");
-        xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)i);
-        xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", payload[i]);
-        xmlTextWriterEndElement(writer); // </payload>
+        if (payload[i] != 0) {
+            xmlTextWriterStartElement(writer, "ptr");
+            xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", payload[i]);
+            xmlTextWriterEndElement(writer); // </ptr>
+        }
     }
 
     StgWord j;
     for (j = 0; j < info->layout.payload.nptrs; ++j) {
-        xmlTextWriterStartElement(writer, "payload");
-        xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)(i+j));
-        xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", payload[i+j]);
-        xmlTextWriterEndElement(writer); // </payload>
+        if (payload[i+j] != 0) {
+            xmlTextWriterStartElement(writer, "nptr");
+            xmlTextWriterWriteFormatAttribute(writer, "val", "%p", payload[i+j]);
+            xmlTextWriterEndElement(writer); // </ptr>
+        }
     }
-#endif
 }
 
 static void
@@ -113,7 +121,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     info = get_itbl(obj);
 
     xmlTextWriterStartElement(writer, closure_type_names[info->type]);
-    xmlTextWriterWriteFormatAttribute(writer, "address", "%p", obj);
+    writePointerAttribute(writer, "ptr", obj);
 
     switch (info->type) {
     case CONSTR:
@@ -126,28 +134,32 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case CONSTR_NOCAF_STATIC: {
         StgWord i, j;
         const StgConInfoTable* con_info = get_con_itbl(obj);
-	xmlTextWriterWriteFormatAttribute(writer, "ptrs", "%lu", info->layout.payload.ptrs);
-	xmlTextWriterWriteFormatAttribute(writer, "nptrs", "%lu", info->layout.payload.nptrs);
+        xmlTextWriterWriteFormatAttribute(writer, "ptrs", "%lu", info->layout.payload.ptrs);
+        xmlTextWriterWriteFormatAttribute(writer, "nptrs", "%lu", info->layout.payload.nptrs);
 
-#if 0
-        xmlTextWriterWriteAttribute(writer, "description", GET_CON_DESC(con_info));
+        const char* con = GET_CON_DESC(con_info);
+        if (con != 0 && strlen(con) > 0) {
+            xmlTextWriterWriteAttribute(writer, "con", GET_CON_DESC(con_info));
+        }
+
         for (i = 0; i < info->layout.payload.ptrs; ++i) {
             if (obj->payload[i] != 0) {
-                xmlTextWriterStartElement(writer, "payload");
-                xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)i);
-                xmlTextWriterWriteFormatAttribute(writer, "value", "%p", obj->payload[i]);
-                xmlTextWriterEndElement(writer); // </payload>
+                if (obj->payload[i] != 0) {
+                    xmlTextWriterStartElement(writer, "ptr");
+                    xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", obj->payload[i]);
+                    xmlTextWriterEndElement(writer); // </ptr>
+                }
             }
         }
         for (j = 0; j < info->layout.payload.nptrs; ++j) {
             if (obj->payload[i+j] != 0) {
-                xmlTextWriterStartElement(writer, "payload");
-                xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)(i+j));
-                xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", obj->payload[i+j]);
-                xmlTextWriterEndElement(writer); // </payload>
+                if (obj->payload[i+j] != 0) {
+                    xmlTextWriterStartElement(writer, "nptr");
+                    xmlTextWriterWriteFormatAttribute(writer, "val", "%p", obj->payload[i+j]);
+                    xmlTextWriterEndElement(writer); // </ptr>
+                }
             }
         }
-#endif
         break;
     }
 
@@ -159,7 +171,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case FUN_2_0:
     case FUN_STATIC:
         xmlTextWriterWriteFormatAttribute(writer, "arity", "%d", itbl_to_fun_itbl(info)->f.arity);
-        xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)obj->header.info));
+        writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
 #ifdef PROFILING
         xmlTextWriterWriteAttribute(writer, "label", obj->header.prof.ccs->cc->label);
 #endif
@@ -167,7 +179,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
         break;
 
     case PRIM:
-        xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)obj->header.info));
+        writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
         printStdObjPayload(writer, obj);
         break;
 
@@ -188,7 +200,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
 
     case THUNK_SELECTOR:
         printStdObjHdr(writer, obj, "THUNK_SELECTOR");
-        xmlTextWriterWriteFormatAttribute(writer, "selectee", "%p", ((StgSelector *)obj)->selectee);
+        writePointerAttribute(writer, "selectee", ((StgSelector *)obj)->selectee);
         break;
 
     case BCO:
@@ -200,16 +212,15 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case AP: {
         const StgAP* ap = (const StgAP*)obj;
         StgWord i;
-        xmlTextWriterWriteFormatAttribute(writer, "fun", "%p", (StgPtr)ap->fun);
+        writePointerAttribute(writer, "fun", (StgPtr)ap->fun);
         xmlTextWriterWriteFormatAttribute(writer, "args", "%lu", ap->n_args);
-#if 0
         for (i = 0; i < ap->n_args; ++i) {
-            xmlTextWriterStartElement(writer, "payload");
-            xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)i);
-            xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", ((P_)ap->payload[i]));
-            xmlTextWriterEndElement(writer); // </payload>
+            if (ap->payload[i] != 0) {
+                xmlTextWriterStartElement(writer, "ptr");
+                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)ap->payload[i]));
+                xmlTextWriterEndElement(writer); // </ptr>
+            }
         }
-#endif
         break;
     }
 
@@ -217,32 +228,30 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
         const StgPAP* pap = (const StgPAP*)obj;
         StgWord i;
         xmlTextWriterWriteFormatAttribute(writer, "arity", "%d", pap->arity);
-        xmlTextWriterWriteFormatAttribute(writer, "fun", "%p", (StgPtr)pap->fun);
+        writePointerAttribute(writer, "fun", (StgPtr)pap->fun);
         xmlTextWriterWriteFormatAttribute(writer, "args", "%lu", pap->n_args);
-#if 0
         for (i = 0; i < pap->n_args; ++i) {
-            xmlTextWriterStartElement(writer, "payload");
-            xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)i);
-            xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", ((P_)pap->payload[i]));
-            xmlTextWriterEndElement(writer); // </payload>
+            if (pap->payload[i] != 0) {
+                xmlTextWriterStartElement(writer, "ptr");
+                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)pap->payload[i]));
+                xmlTextWriterEndElement(writer); // </ptr>
+            }
         }
-#endif
         break;
     }
 
     case AP_STACK: {
         const StgAP_STACK* ap = (const StgAP_STACK*)obj;
         StgWord i;
-        xmlTextWriterWriteFormatAttribute(writer, "fun", "%p", (StgPtr)ap->fun);
+        writePointerAttribute(writer, "fun", (StgPtr)ap->fun);
         xmlTextWriterWriteFormatAttribute(writer, "size", "%lu", ap->size);
-#if 0
         for (i = 0; i < ap->size; ++i) {
-            xmlTextWriterStartElement(writer, "payload");
-            xmlTextWriterWriteFormatAttribute(writer, "index", "%d", (int)i);
-            xmlTextWriterWriteFormatAttribute(writer, "pointer", "%p", ((P_)ap->payload[i]));
-            xmlTextWriterEndElement(writer); // </payload>
+            if (ap->payload[i] != 0) {
+                xmlTextWriterStartElement(writer, "ptr");
+                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)ap->payload[i]));
+                xmlTextWriterEndElement(writer); // </payload>
+            }
         }
-#endif
         break;
     }
 
@@ -250,31 +259,31 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case IND_PERM:
     case IND_STATIC:
     case BLACKHOLE:
-        xmlTextWriterWriteFormatAttribute(writer, "indirectee", "%p", (StgPtr)((StgInd*)obj)->indirectee);
+        writePointerAttribute(writer, "indirectee", (StgPtr)((StgInd*)obj)->indirectee);
 
     case UPDATE_FRAME: {
         const StgUpdateFrame* u = (const StgUpdateFrame*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)GET_INFO(u)));
-        xmlTextWriterWriteFormatAttribute(writer, "updatee", "%p", ((StgPtr)u->updatee));
+        writePointerAttribute(writer, "info", ((StgPtr)GET_INFO(u)));
+        writePointerAttribute(writer, "updatee", ((StgPtr)u->updatee));
         break;
     }
 
     case CATCH_FRAME: {
         const StgCatchFrame* u = (const StgCatchFrame*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)GET_INFO(u)));
-        xmlTextWriterWriteFormatAttribute(writer, "handler", "%p", ((StgPtr)u->handler));
+        writePointerAttribute(writer, "info", ((StgPtr)GET_INFO(u)));
+        writePointerAttribute(writer, "handler", ((StgPtr)u->handler));
         break;
     }
 
     case UNDERFLOW_FRAME: {
         const StgUnderflowFrame* u = (const StgUnderflowFrame*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "nextChunk", "%p", ((StgPtr)u->next_chunk));
+        writePointerAttribute(writer, "nextChunk", ((StgPtr)u->next_chunk));
         break;
     }
 
     case STOP_FRAME: {
         const StgStopFrame* u = (const StgStopFrame*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "info", "%p", ((StgPtr)GET_INFO(u)));
+        writePointerAttribute(writer, "info", ((StgPtr)GET_INFO(u)));
         break;
     }
 
@@ -296,25 +305,25 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case MVAR_CLEAN:
     case MVAR_DIRTY: {
         const StgMVar* mv = (const StgMVar*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "head", "%p", mv->head);
-        xmlTextWriterWriteFormatAttribute(writer, "tail", "%p", mv->tail);
-        xmlTextWriterWriteFormatAttribute(writer, "value", "%p", mv->value);
+        writePointerAttribute(writer, "head", mv->head);
+        writePointerAttribute(writer, "tail", mv->tail);
+        writePointerAttribute(writer, "value", mv->value);
         break;
     }
 
     case MUT_VAR_CLEAN:
     case MUT_VAR_DIRTY: {
         const StgMutVar* mv = (const StgMutVar*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "var", "%p", mv->var);
+        writePointerAttribute(writer, "var", mv->var);
         break;
     }
 
     case WEAK: {
         const StgWeak* w = (const StgWeak*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "key", "%p", w->key);
-        xmlTextWriterWriteFormatAttribute(writer, "value", "%p", w->value);
-        xmlTextWriterWriteFormatAttribute(writer, "finalizer", "%p", w->finalizer);
-        xmlTextWriterWriteFormatAttribute(writer, "cfinalizer", "%p", w->cfinalizer);
+        writePointerAttribute(writer, "key", w->key);
+        writePointerAttribute(writer, "value", w->value);
+        writePointerAttribute(writer, "finalizer", w->finalizer);
+        writePointerAttribute(writer, "cfinalizer", w->cfinalizer);
         /* ToDo: chase 'link' ? */
         break;
     }
@@ -404,7 +413,7 @@ printLargeBitmap (xmlTextWriterPtr writer, const StgPtr spBottom, const StgPtr p
                 printPtr((P_)payload[i]);
                 debugBelch("\n");
             } else {
-	        debugBelch("Word# %lu\n", (lnat)payload[i]);
+                debugBelch("Word# %lu\n", (lnat)payload[i]);
             }
         }
     }
@@ -594,9 +603,11 @@ printHeap (const char *fileName)
     oldSIGSEGV = signal(SIGSEGV, segvHandler);
     oldSIGBUS = signal(SIGBUS, segvHandler);
 
-    xmlTextWriterPtr writer = xmlNewTextWriterFilename(fileName, 0);
+    xmlTextWriterPtr writer = xmlNewTextWriterFilename(fileName, 1);
+    xmlTextWriterSetIndent(writer, 1);
+    xmlTextWriterSetIndentString(writer, " ");
 
-    xmlTextWriterStartDocument(writer, NULL, NULL, NULL);
+    xmlTextWriterStartDocument(writer, NULL, "utf-8", NULL);
     xmlTextWriterStartElement(writer, "heap");
 
     nat g;
@@ -610,6 +621,7 @@ printHeap (const char *fileName)
 
     xmlTextWriterEndElement(writer); // </heap>
     xmlTextWriterEndDocument(writer);
+    xmlFreeTextWriter(writer);
 
     signal(SIGSEGV, oldSIGSEGV);
     signal(SIGBUS, oldSIGBUS);
