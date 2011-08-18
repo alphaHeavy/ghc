@@ -288,16 +288,16 @@ disInstr (StgBCO *bco, int pc)
    short is the number of bytecodes which follow it.
    See ByteCodeGen.linkBCO.insns_arr for construction ...
 */
-void disassemble (StgBCO *bco)
+void
+disassemble (StgBCO *bco)
 {
     nat i, j;
     StgWord16*     instrs    = (StgWord16*)(bco->instrs->payload);
     StgMutArrPtrs* ptrs      = bco->ptrs;
     nat            nbcs      = (int)instrs[0];
-    nat            pc        = 1;
 
     debugBelch("BCO\n");
-    pc = 1;
+    nat pc = 1;
     while (pc <= nbcs) {
         debugBelch("\t%2d:  ", pc);
         pc = disInstr(bco, pc);
@@ -305,9 +305,8 @@ void disassemble (StgBCO *bco)
 
     debugBelch("INSTRS:\n   ");
     j = 16;
-    for (i = 0; i < nbcs; i++) {
+    for (i = 0; i < nbcs; j--, i++) {
         debugBelch("%3d ", (int)instrs[i]);
-        j--;
         if (j == 0) {
             j = 16;
             debugBelch("\n   ");
@@ -317,9 +316,8 @@ void disassemble (StgBCO *bco)
 
     debugBelch("PTRS:\n   ");
     j = 8;
-    for (i = 0; i < ptrs->ptrs; i++) {
+    for (i = 0; i < ptrs->ptrs; j--, i++) {
         debugBelch("%8p ", ptrs->payload[i]);
-        j--;
         if (j == 0) {
             j = 8;
             debugBelch("\n   ");

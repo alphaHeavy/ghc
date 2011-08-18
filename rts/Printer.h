@@ -11,26 +11,18 @@
 
 #include "BeginPrivate.h"
 
-extern void          printPtr        ( StgPtr p );
-extern void          printObj        ( StgClosure *obj );
-
 extern const char *  closure_type_names[];
 
-void                 info_hdr_type   ( StgClosure *closure, char *res );
-const char *         info_type       ( StgClosure *closure );
-const char *         info_type_by_ip ( StgInfoTable *ip );
+void                 info_hdr_type   ( const StgClosure *closure, char *res );
+const char *         info_type       ( const StgClosure *closure );
+const char *         info_type_by_ip ( const StgInfoTable *ip );
 
 #ifdef DEBUG
-extern void          prettyPrintClosure (StgClosure *obj);
-extern void          printClosure    ( StgClosure *obj );
-extern StgPtr        printStackObj   ( StgPtr sp );
-extern void          printStackChunk ( StgPtr sp, StgPtr spLim );
-extern void          printTSO        ( StgTSO *tso );
-extern void          printHeap       ( void );
+extern void          printHeap       ( const char *fileName );
 
-extern void          loadSymbols     ( char *name );
+extern void          loadSymbols     ( const char *name );
 
-extern const char *  lookupGHCName   ( void *addr );
+extern const char *  lookupGHCName   ( const void *addr );
 extern const char *  what_next_strs[];
 #endif
 
