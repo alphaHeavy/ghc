@@ -10,6 +10,7 @@
 #include "Rts.h"
 #include "rts/Bytecodes.h"  /* for InstrPtr */
 
+#include "PrinterXml.h"
 #include "Printer.h"
 #include "RtsUtils.h"
 
@@ -28,41 +29,25 @@
  * local function decls
  * ------------------------------------------------------------------------*/
 
-static void    printStdObjPayload( xmlTextWriterPtr writer, const StgClosure *obj );
-#if 0 /* unused but might be useful sometime */
-static rtsBool lookup_name   ( char *name, StgWord *result );
-static void    enZcode       ( char *in, char *out );
-#endif
-
-extern void printClosure (xmlTextWriterPtr writer, const StgClosure *obj);
+static void printStdObjPayloadXml( xmlTextWriterPtr writer, const StgClosure *obj );
+static void printClosureXml(xmlTextWriterPtr writer, const StgClosure *obj);
 
 /* --------------------------------------------------------------------------
  * Printer
  * ------------------------------------------------------------------------*/
 
-extern void
-printObj (xmlTextWriterPtr writer, const StgClosure *obj)
-{
-    printClosure(writer, obj);
-}
-
-extern void
-printPtr (const StgClosure *obj)
-{
-}
-
 static void
-writePointerAttribute(xmlTextWriterPtr writer, const char *name, StgPtr value)
+writePointerAttribute(xmlTextWriterPtr writer, const char *name, const void* value)
 {
     if (value != 0) {
-        xmlTextWriterWriteFormatAttribute(writer, name, "%p", value);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)name, "%p", value);
     }
 }
 
 STATIC_INLINE void
-printStdObjHdr (xmlTextWriterPtr writer, const StgClosure *obj, const char* tag)
+printStdObjHdrXml (xmlTextWriterPtr writer, const StgClosure *obj, const char* tag)
 {
-    xmlTextWriterWriteAttribute(writer, "tag", tag);
+    xmlTextWriterWriteAttribute(writer, (const xmlChar *)"tag", (const xmlChar *)tag);
     writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
 #ifdef PROFILING
     xmlTextWriterWriteAttribute(writer, "label", obj->header.prof.ccs->cc->label);
@@ -70,15 +55,15 @@ printStdObjHdr (xmlTextWriterPtr writer, const StgClosure *obj, const char* tag)
 }
 
 static void
-printInfoTablePayload (xmlTextWriterPtr writer, const StgInfoTable* info, const StgClosurePtr* payload)
+printInfoTablePayloadXml (xmlTextWriterPtr writer, const StgInfoTable* info, const StgClosurePtr* payload)
 {
-    xmlTextWriterWriteFormatAttribute(writer, "ptrs", "%lu", info->layout.payload.ptrs);
-    xmlTextWriterWriteFormatAttribute(writer, "nptrs", "%lu", info->layout.payload.nptrs);
+    xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"ptrs", "%lu", (lnat)info->layout.payload.ptrs);
+    xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"nptrs", "%lu", (lnat)info->layout.payload.nptrs);
     StgWord i;
     for (i = 0; i < info->layout.payload.ptrs; ++i) {
         if (payload[i] != 0) {
-            xmlTextWriterStartElement(writer, "ptr");
-            xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", payload[i]);
+            xmlTextWriterStartElement(writer, (const xmlChar *)"ptr");
+            xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"addr", "%p", payload[i]);
             xmlTextWriterEndElement(writer); // </ptr>
         }
     }
@@ -86,41 +71,41 @@ printInfoTablePayload (xmlTextWriterPtr writer, const StgInfoTable* info, const 
     StgWord j;
     for (j = 0; j < info->layout.payload.nptrs; ++j) {
         if (payload[i+j] != 0) {
-            xmlTextWriterStartElement(writer, "nptr");
-            xmlTextWriterWriteFormatAttribute(writer, "val", "%p", payload[i+j]);
+            xmlTextWriterStartElement(writer, (const xmlChar *)"nptr");
+            xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"val", "%p", payload[i+j]);
             xmlTextWriterEndElement(writer); // </ptr>
         }
     }
 }
 
 static void
-printStdObjPayload (xmlTextWriterPtr writer, const StgClosure *obj)
+printStdObjPayloadXml (xmlTextWriterPtr writer, const StgClosure *obj)
 {
-    printInfoTablePayload(writer, get_itbl(obj), obj->payload);
+    printInfoTablePayloadXml(writer, get_itbl(obj), obj->payload);
 }
 
 static void
-printThunkPayload (xmlTextWriterPtr writer, const StgThunk *obj)
+printThunkPayloadXml (xmlTextWriterPtr writer, const StgThunk *obj)
 {
-    printInfoTablePayload(writer, get_itbl(obj), obj->payload);
+    printInfoTablePayloadXml(writer, get_itbl(obj), obj->payload);
 }
 
 static void
-printThunkObject (xmlTextWriterPtr writer, const StgThunk *obj, const char* tag)
+printThunkObjectXml (xmlTextWriterPtr writer, const StgThunk *obj, const char* tag)
 {
-    printStdObjHdr(writer, (const StgClosure *)obj, tag);
-    printThunkPayload(writer, obj);
+    printStdObjHdrXml(writer, (const StgClosure *)obj, tag);
+    printThunkPayloadXml(writer, obj);
 }
 
 extern void
-printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
+printClosureXml (xmlTextWriterPtr writer, const StgClosure *obj)
 {
-    obj = UNTAG_CLOSURE(obj);
+    obj = UNTAG_CLOSURE((StgClosure *)obj);
 
     const StgInfoTable* info;
     info = get_itbl(obj);
 
-    xmlTextWriterStartElement(writer, closure_type_names[info->type]);
+    xmlTextWriterStartElement(writer, (const xmlChar *)closure_type_names[info->type]);
     writePointerAttribute(writer, "ptr", obj);
 
     switch (info->type) {
@@ -134,19 +119,19 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case CONSTR_NOCAF_STATIC: {
         StgWord i, j;
         const StgConInfoTable* con_info = get_con_itbl(obj);
-        xmlTextWriterWriteFormatAttribute(writer, "ptrs", "%lu", info->layout.payload.ptrs);
-        xmlTextWriterWriteFormatAttribute(writer, "nptrs", "%lu", info->layout.payload.nptrs);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"ptrs", "%lu", (lnat)info->layout.payload.ptrs);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"nptrs", "%lu", (lnat)info->layout.payload.nptrs);
 
         const char* con = GET_CON_DESC(con_info);
         if (con != 0 && strlen(con) > 0) {
-            xmlTextWriterWriteAttribute(writer, "con", GET_CON_DESC(con_info));
+            xmlTextWriterWriteAttribute(writer, (const xmlChar *)"con", (const xmlChar *)con);
         }
 
         for (i = 0; i < info->layout.payload.ptrs; ++i) {
             if (obj->payload[i] != 0) {
                 if (obj->payload[i] != 0) {
-                    xmlTextWriterStartElement(writer, "ptr");
-                    xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", obj->payload[i]);
+                    xmlTextWriterStartElement(writer, (const xmlChar *)"ptr");
+                    xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"addr", "%p", obj->payload[i]);
                     xmlTextWriterEndElement(writer); // </ptr>
                 }
             }
@@ -154,8 +139,8 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
         for (j = 0; j < info->layout.payload.nptrs; ++j) {
             if (obj->payload[i+j] != 0) {
                 if (obj->payload[i+j] != 0) {
-                    xmlTextWriterStartElement(writer, "nptr");
-                    xmlTextWriterWriteFormatAttribute(writer, "val", "%p", obj->payload[i+j]);
+                    xmlTextWriterStartElement(writer, (const xmlChar *)"nptr");
+                    xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"val", "%p", obj->payload[i+j]);
                     xmlTextWriterEndElement(writer); // </ptr>
                 }
             }
@@ -170,17 +155,17 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case FUN_0_2:
     case FUN_2_0:
     case FUN_STATIC:
-        xmlTextWriterWriteFormatAttribute(writer, "arity", "%d", itbl_to_fun_itbl(info)->f.arity);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"arity", "%d", itbl_to_fun_itbl(info)->f.arity);
         writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
 #ifdef PROFILING
         xmlTextWriterWriteAttribute(writer, "label", obj->header.prof.ccs->cc->label);
 #endif
-        printStdObjPayload(writer, obj);
+        printStdObjPayloadXml(writer, obj);
         break;
 
     case PRIM:
         writePointerAttribute(writer, "info", ((StgPtr)obj->header.info));
-        printStdObjPayload(writer, obj);
+        printStdObjPayloadXml(writer, obj);
         break;
 
     case THUNK:
@@ -192,14 +177,14 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case THUNK_STATIC:
         /* ToDo: will this work for THUNK_STATIC too? */
 #ifdef PROFILING
-        printThunkObject(writer, (const StgThunk *)obj, GET_PROF_DESC(info));
+        printThunkObjectXml(writer, (const StgThunk *)obj, GET_PROF_DESC(info));
 #else
-        printThunkObject(writer, (const StgThunk *)obj, "THUNK");
+        printThunkObjectXml(writer, (const StgThunk *)obj, "THUNK");
 #endif
         break;
 
     case THUNK_SELECTOR:
-        printStdObjHdr(writer, obj, "THUNK_SELECTOR");
+        printStdObjHdrXml(writer, obj, "THUNK_SELECTOR");
         writePointerAttribute(writer, "selectee", ((StgSelector *)obj)->selectee);
         break;
 
@@ -212,12 +197,12 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case AP: {
         const StgAP* ap = (const StgAP*)obj;
         StgWord i;
-        writePointerAttribute(writer, "fun", (StgPtr)ap->fun);
-        xmlTextWriterWriteFormatAttribute(writer, "args", "%lu", ap->n_args);
+        writePointerAttribute(writer, "fun", ap->fun);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"args", "%lu", (lnat)ap->n_args);
         for (i = 0; i < ap->n_args; ++i) {
             if (ap->payload[i] != 0) {
-                xmlTextWriterStartElement(writer, "ptr");
-                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)ap->payload[i]));
+                xmlTextWriterStartElement(writer, (const xmlChar *)"ptr");
+                xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"addr", "%p", ((P_)ap->payload[i]));
                 xmlTextWriterEndElement(writer); // </ptr>
             }
         }
@@ -227,13 +212,13 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case PAP: {
         const StgPAP* pap = (const StgPAP*)obj;
         StgWord i;
-        xmlTextWriterWriteFormatAttribute(writer, "arity", "%d", pap->arity);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"arity", "%d", pap->arity);
         writePointerAttribute(writer, "fun", (StgPtr)pap->fun);
-        xmlTextWriterWriteFormatAttribute(writer, "args", "%lu", pap->n_args);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"args", "%lu", (lnat)pap->n_args);
         for (i = 0; i < pap->n_args; ++i) {
             if (pap->payload[i] != 0) {
-                xmlTextWriterStartElement(writer, "ptr");
-                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)pap->payload[i]));
+                xmlTextWriterStartElement(writer, (const xmlChar *)"ptr");
+                xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"addr", "%p", ((P_)pap->payload[i]));
                 xmlTextWriterEndElement(writer); // </ptr>
             }
         }
@@ -243,12 +228,12 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case AP_STACK: {
         const StgAP_STACK* ap = (const StgAP_STACK*)obj;
         StgWord i;
-        writePointerAttribute(writer, "fun", (StgPtr)ap->fun);
-        xmlTextWriterWriteFormatAttribute(writer, "size", "%lu", ap->size);
+        writePointerAttribute(writer, "fun", ap->fun);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"size", "%lu", ap->size);
         for (i = 0; i < ap->size; ++i) {
             if (ap->payload[i] != 0) {
-                xmlTextWriterStartElement(writer, "ptr");
-                xmlTextWriterWriteFormatAttribute(writer, "addr", "%p", ((P_)ap->payload[i]));
+                xmlTextWriterStartElement(writer, (const xmlChar *)"ptr");
+                xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"addr", "%p", ((P_)ap->payload[i]));
                 xmlTextWriterEndElement(writer); // </payload>
             }
         }
@@ -289,7 +274,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
 
     case ARR_WORDS: {
         const StgArrWords* arr = (const StgArrWords *)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "bytes", "%u", (unsigned int)arr->bytes);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"bytes", "%u", (unsigned int)arr->bytes);
         xmlTextWriterWriteBase64(writer, (const char *)arr->payload, 0, arr->bytes);
         break;
     }
@@ -298,7 +283,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     case MUT_ARR_PTRS_DIRTY:
     case MUT_ARR_PTRS_FROZEN: {
         const StgMutArrPtrs* arr = (const StgMutArrPtrs *)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "size", "%lu", (lnat)arr->ptrs);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"size", "%lu", (lnat)arr->ptrs);
         break;
     }
 
@@ -330,13 +315,13 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
 
     case TSO: {
         const StgTSO* tso = (const StgTSO*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "id", "%lu", (lnat)tso->id);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"id", "%lu", (lnat)tso->id);
         break;
     }
 
     case STACK: {
         const StgStack* stack = (const StgStack*)obj;
-        xmlTextWriterWriteFormatAttribute(writer, "size", "%lu", (lnat)stack->stack_size);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"size", "%lu", (lnat)stack->stack_size);
         break;
     }
 
@@ -348,6 +333,7 @@ printClosure (xmlTextWriterPtr writer, const StgClosure *obj)
     xmlTextWriterEndElement(writer); // </object>
 }
 
+#if 0
 static StgPtr
 printStackObj (xmlTextWriterPtr writer, StgPtr sp)
 {
@@ -543,9 +529,10 @@ printTSO (xmlTextWriterPtr writer, const StgTSO *tso)
                     tso->stackobj->sp,
                     tso->stackobj->stack+tso->stackobj->stack_size);
 }
+#endif
 
 static jmp_buf jmpbuf;
-static void
+__attribute__ ((noreturn)) static void
 segvHandler (int signo)
 {
     debugBelch("<<%s>>\n", strsignal(signo));
@@ -553,7 +540,7 @@ segvHandler (int signo)
 }
 
 static void
-printHeapChunk (xmlTextWriterPtr writer, const bdescr *bd)
+printHeapChunkXml (xmlTextWriterPtr writer, const bdescr *bd)
 {
     volatile StgPtr q;
     for ( ; bd; bd = bd->link) {
@@ -572,19 +559,19 @@ printHeapChunk (xmlTextWriterPtr writer, const bdescr *bd)
                     continue;
                 }
 
-                StgPtr end = q + closure_sizeW((const StgClosure*)q);
+                StgPtr end = q + closure_sizeW((StgClosure *)q);
                 if (end >= bd->free) {
                     // debugBelch("%p found at %p, closure?", p, q);
                     continue;
                 }
 
-                printClosure(writer, (const StgClosure *)q);
+                printClosureXml(writer, (const StgClosure *)q);
             }
         }
     }
 }
 
-void
+extern void
 printHeap (const char *fileName)
 {
     kern_return_t kret = task_set_exception_ports(
@@ -605,17 +592,17 @@ printHeap (const char *fileName)
 
     xmlTextWriterPtr writer = xmlNewTextWriterFilename(fileName, 1);
     xmlTextWriterSetIndent(writer, 1);
-    xmlTextWriterSetIndentString(writer, " ");
+    xmlTextWriterSetIndentString(writer, (const xmlChar *)" ");
 
     xmlTextWriterStartDocument(writer, NULL, "utf-8", NULL);
-    xmlTextWriterStartElement(writer, "heap");
+    xmlTextWriterStartElement(writer, (const xmlChar *)"heap");
 
     nat g;
     for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
-        xmlTextWriterStartElement(writer, "generation");
-        xmlTextWriterWriteFormatAttribute(writer, "number", "%d", g);
-        printHeapChunk(writer, generations[g].blocks);
-        printHeapChunk(writer, generations[g].large_objects);
+        xmlTextWriterStartElement(writer, (const xmlChar *)"generation");
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"number", "%d", g);
+        printHeapChunkXml(writer, generations[g].blocks);
+        printHeapChunkXml(writer, generations[g].large_objects);
         xmlTextWriterEndElement(writer); // </generation>
     }
 
@@ -627,98 +614,5 @@ printHeap (const char *fileName)
     signal(SIGBUS, oldSIGBUS);
 }
 
-const char *what_next_strs[] = {
-  [0]               = "(unknown)",
-  [ThreadRunGHC]    = "ThreadRunGHC",
-  [ThreadInterpret] = "ThreadInterpret",
-  [ThreadKilled]    = "ThreadKilled",
-  [ThreadComplete]  = "ThreadComplete"
-};
-
 #endif /* DEBUG */
-
-/* -----------------------------------------------------------------------------
-   Closure types
-
-   NOTE: must be kept in sync with the closure types in includes/ClosureTypes.h
-   -------------------------------------------------------------------------- */
-
-const char *closure_type_names[] = {
- [INVALID_OBJECT]        = "INVALID_OBJECT",
- [CONSTR]                = "CONSTR",
- [CONSTR_1_0]            = "CONSTR_1_0",
- [CONSTR_0_1]            = "CONSTR_0_1",
- [CONSTR_2_0]            = "CONSTR_2_0",
- [CONSTR_1_1]            = "CONSTR_1_1",
- [CONSTR_0_2]            = "CONSTR_0_2",
- [CONSTR_STATIC]         = "CONSTR_STATIC",
- [CONSTR_NOCAF_STATIC]   = "CONSTR_NOCAF_STATIC",
- [FUN]                   = "FUN",
- [FUN_1_0]               = "FUN_1_0",
- [FUN_0_1]               = "FUN_0_1",
- [FUN_2_0]               = "FUN_2_0",
- [FUN_1_1]               = "FUN_1_1",
- [FUN_0_2]               = "FUN_0_2",
- [FUN_STATIC]            = "FUN_STATIC",
- [THUNK]                 = "THUNK",
- [THUNK_1_0]             = "THUNK_1_0",
- [THUNK_0_1]             = "THUNK_0_1",
- [THUNK_2_0]             = "THUNK_2_0",
- [THUNK_1_1]             = "THUNK_1_1",
- [THUNK_0_2]             = "THUNK_0_2",
- [THUNK_STATIC]          = "THUNK_STATIC",
- [THUNK_SELECTOR]        = "THUNK_SELECTOR",
- [BCO]                   = "BCO",
- [AP]                    = "AP",
- [PAP]                   = "PAP",
- [AP_STACK]              = "AP_STACK",
- [IND]                   = "IND",
- [IND_PERM]              = "IND_PERM",
- [IND_STATIC]            = "IND_STATIC",
- [RET_BCO]               = "RET_BCO",
- [RET_SMALL]             = "RET_SMALL",
- [RET_BIG]               = "RET_BIG",
- [RET_DYN]               = "RET_DYN",
- [RET_FUN]               = "RET_FUN",
- [UPDATE_FRAME]          = "UPDATE_FRAME",
- [CATCH_FRAME]           = "CATCH_FRAME",
- [UNDERFLOW_FRAME]       = "UNDERFLOW_FRAME",
- [STOP_FRAME]            = "STOP_FRAME",
- [BLACKHOLE]             = "BLACKHOLE",
- [BLOCKING_QUEUE]        = "BLOCKING_QUEUE",
- [MVAR_CLEAN]            = "MVAR_CLEAN",
- [MVAR_DIRTY]            = "MVAR_DIRTY",
- [ARR_WORDS]             = "ARR_WORDS",
- [MUT_ARR_PTRS_CLEAN]    = "MUT_ARR_PTRS_CLEAN",
- [MUT_ARR_PTRS_DIRTY]    = "MUT_ARR_PTRS_DIRTY",
- [MUT_ARR_PTRS_FROZEN0]  = "MUT_ARR_PTRS_FROZEN0",
- [MUT_ARR_PTRS_FROZEN]   = "MUT_ARR_PTRS_FROZEN",
- [MUT_VAR_CLEAN]         = "MUT_VAR_CLEAN",
- [MUT_VAR_DIRTY]         = "MUT_VAR_DIRTY",
- [WEAK]                  = "WEAK",
- [PRIM]                  = "PRIM",
- [MUT_PRIM]              = "MUT_PRIM",
- [TSO]                   = "TSO",
- [STACK]                 = "STACK",
- [TREC_CHUNK]            = "TREC_CHUNK",
- [ATOMICALLY_FRAME]      = "ATOMICALLY_FRAME",
- [CATCH_RETRY_FRAME]     = "CATCH_RETRY_FRAME",
- [CATCH_STM_FRAME]       = "CATCH_STM_FRAME",
- [WHITEHOLE]             = "WHITEHOLE"
-};
-
-const char *
-info_type (const StgClosure *closure) {
-  return closure_type_names[get_itbl(closure)->type];
-}
-
-const char *
-info_type_by_ip (const StgInfoTable *ip) {
-  return closure_type_names[ip->type];
-}
-
-void
-info_hdr_type (const StgClosure *closure, char *res) {
-  strcpy(res, closure_type_names[get_itbl(closure)->type]);
-}
 
