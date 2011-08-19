@@ -29,8 +29,10 @@
  * local function decls
  * ------------------------------------------------------------------------*/
 
+typedef rtsBool (*HEAP_FILTER)(const void*, const StgInfoTable*, const StgClosure*);
+
 static void printStdObjPayloadXml( xmlTextWriterPtr writer, const StgClosure *obj );
-static void printClosureXml(xmlTextWriterPtr writer, const StgClosure *obj);
+static void printClosureXml(xmlTextWriterPtr writer, HEAP_FILTER filter, const void* context, const StgClosure *obj);
 
 /* --------------------------------------------------------------------------
  * Printer
@@ -98,12 +100,16 @@ printThunkObjectXml (xmlTextWriterPtr writer, const StgThunk *obj, const char* t
 }
 
 extern void
-printClosureXml (xmlTextWriterPtr writer, const StgClosure *obj)
+printClosureXml (xmlTextWriterPtr writer, HEAP_FILTER filter, const void* context, const StgClosure *obj)
 {
     obj = UNTAG_CLOSURE((StgClosure *)obj);
 
     const StgInfoTable* info;
     info = get_itbl(obj);
+
+    if (filter(context, info, obj) == rtsTrue) {
+        return;
+    }
 
     xmlTextWriterStartElement(writer, (const xmlChar *)closure_type_names[info->type]);
     writePointerAttribute(writer, "ptr", obj);
@@ -540,7 +546,7 @@ segvHandler (int signo)
 }
 
 static void
-printHeapChunkXml (xmlTextWriterPtr writer, const bdescr *bd)
+printHeapChunkXml (xmlTextWriterPtr writer, HEAP_FILTER filter, const void* context, const bdescr *bd)
 {
     volatile StgPtr q;
     for ( ; bd; bd = bd->link) {
@@ -565,14 +571,14 @@ printHeapChunkXml (xmlTextWriterPtr writer, const bdescr *bd)
                     continue;
                 }
 
-                printClosureXml(writer, (const StgClosure *)q);
+                printClosureXml(writer, filter, context, (const StgClosure *)q);
             }
         }
     }
 }
 
-extern void
-printHeap (const char *fileName)
+static void
+printHeapWithFilter (const char *fileName, HEAP_FILTER filter, const void* context)
 {
     kern_return_t kret = task_set_exception_ports(
         mach_task_self(),
@@ -590,7 +596,8 @@ printHeap (const char *fileName)
     oldSIGSEGV = signal(SIGSEGV, segvHandler);
     oldSIGBUS = signal(SIGBUS, segvHandler);
 
-    xmlTextWriterPtr writer = xmlNewTextWriterFilename(fileName, 1);
+    int compress = strstr(fileName, ".gz") != 0 ? 1 : 0;
+    xmlTextWriterPtr writer = xmlNewTextWriterFilename(fileName, compress);
     xmlTextWriterSetIndent(writer, 1);
     xmlTextWriterSetIndentString(writer, (const xmlChar *)" ");
 
@@ -601,8 +608,8 @@ printHeap (const char *fileName)
     for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
         xmlTextWriterStartElement(writer, (const xmlChar *)"generation");
         xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"number", "%d", g);
-        printHeapChunkXml(writer, generations[g].blocks);
-        printHeapChunkXml(writer, generations[g].large_objects);
+        printHeapChunkXml(writer, filter, context, generations[g].blocks);
+        printHeapChunkXml(writer, filter, context, generations[g].large_objects);
         xmlTextWriterEndElement(writer); // </generation>
     }
 
@@ -612,6 +619,54 @@ printHeap (const char *fileName)
 
     signal(SIGSEGV, oldSIGSEGV);
     signal(SIGBUS, oldSIGBUS);
+}
+
+static rtsBool
+filterNone (
+  const void* ctx STG_UNUSED,
+  const StgInfoTable* info STG_UNUSED,
+  const StgClosure* obj STG_UNUSED)
+{
+    return rtsFalse;
+}
+
+static rtsBool
+filterByTypeName (
+  const void* ctx,
+  const StgInfoTable* info,
+  const StgClosure* obj)
+{
+    switch (info->type) {
+    case CONSTR:
+    case CONSTR_1_0:
+    case CONSTR_0_1:
+    case CONSTR_1_1:
+    case CONSTR_0_2:
+    case CONSTR_2_0:
+    case CONSTR_STATIC:
+    case CONSTR_NOCAF_STATIC: {
+        const StgConInfoTable* con_info = get_con_itbl(obj);
+        const char* con = GET_CON_DESC(con_info);
+        if (strcasecmp(ctx, con) == 0) {
+            return rtsFalse;
+        }
+    }
+
+    default:
+        return rtsTrue;
+    }
+}
+
+extern void
+printHeap (const char *fileName)
+{
+    printHeapWithFilter(fileName, filterNone, NULL);
+}
+
+extern void
+printHeapByType (const char *fileName, const char *typeName)
+{
+    printHeapWithFilter(fileName, filterByTypeName, typeName);
 }
 
 #endif /* DEBUG */
