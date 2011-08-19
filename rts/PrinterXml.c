@@ -289,7 +289,8 @@ printClosureXml (xmlTextWriterPtr writer, HEAP_FILTER filter, const void* contex
     case MUT_ARR_PTRS_DIRTY:
     case MUT_ARR_PTRS_FROZEN: {
         const StgMutArrPtrs* arr = (const StgMutArrPtrs *)obj;
-        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"size", "%lu", (lnat)arr->ptrs);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"size", "%lu", (lnat)arr->size);
+        xmlTextWriterWriteFormatAttribute(writer, (const xmlChar *)"ptrs", "%lu", (lnat)arr->ptrs);
         break;
     }
 
@@ -580,6 +581,7 @@ printHeapChunkXml (xmlTextWriterPtr writer, HEAP_FILTER filter, const void* cont
 static void
 printHeapWithFilter (const char *fileName, HEAP_FILTER filter, const void* context)
 {
+#ifdef darwin_HOST_OS
     kern_return_t kret = task_set_exception_ports(
         mach_task_self(),
         EXC_MASK_BAD_ACCESS | EXC_MASK_BAD_INSTRUCTION | EXC_MASK_ARITHMETIC,
@@ -590,6 +592,7 @@ printHeapWithFilter (const char *fileName, HEAP_FILTER filter, const void* conte
     if (kret != KERN_SUCCESS) {
         debugBelch("Could not disable CrashReporter. Mach error code %d\n", (int)kret);
     }
+#endif
 
     sig_t oldSIGSEGV;
     sig_t oldSIGBUS;
