@@ -1040,7 +1040,8 @@ void prettyPrintClosure_ (StgClosure *obj)
     }
 }
 
-char *what_next_strs[] = {
+const char *
+what_next_strs[] = {
   [0]               = "(unknown)",
   [ThreadRunGHC]    = "ThreadRunGHC",
   [ThreadInterpret] = "ThreadInterpret",
@@ -1068,7 +1069,8 @@ void printObj( StgClosure *obj )
    NOTE: must be kept in sync with the closure types in includes/ClosureTypes.h
    -------------------------------------------------------------------------- */
 
-char *closure_type_names[] = {
+const char *
+closure_type_names[] = {
  [INVALID_OBJECT]        = "INVALID_OBJECT",
  [CONSTR]                = "CONSTR",
  [CONSTR_1_0]            = "CONSTR_1_0",
@@ -1132,12 +1134,12 @@ char *closure_type_names[] = {
  [WHITEHOLE]             = "WHITEHOLE"
 };
 
-char *
+const char *
 info_type(StgClosure *closure){ 
   return closure_type_names[get_itbl(closure)->type];
 }
 
-char *
+const char *
 info_type_by_ip(StgInfoTable *ip){ 
   return closure_type_names[ip->type];
 }
