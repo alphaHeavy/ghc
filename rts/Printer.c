@@ -8,18 +8,16 @@
 
 #include "PosixSource.h"
 #include "Rts.h"
-#include "rts/Bytecodes.h"  /* for InstrPtr */
 
 #include "Printer.h"
-#include "PrinterXml.h"
-#include "RtsUtils.h"
 
 #include <string.h>
 
 #ifdef DEBUG
 
 #include "Disassembler.h"
-#include "Apply.h"
+
+#endif
 
 /* --------------------------------------------------------------------------
  * local function decls
@@ -180,7 +178,11 @@ printClosure( StgClosure *obj )
 	break;
 
     case BCO:
+#ifdef DEBUG
             disassemble( (StgBCO*)obj );
+#else
+            debugBelch("BCO\n");
+#endif
             break;
 
     case AP:
@@ -973,7 +975,6 @@ void prettyPrintClosure (StgClosure *obj)
 {
    prettyPrintClosure_ (obj);
    debugBelch ("\n");
-   printHeap("foo.xml.gz");
 }
 
 void prettyPrintClosure_ (StgClosure *obj)
@@ -1048,20 +1049,6 @@ what_next_strs[] = {
   [ThreadKilled]    = "ThreadKilled",
   [ThreadComplete]  = "ThreadComplete"
 };
-
-#else /* DEBUG */
-void printPtr( StgPtr p )
-{
-    debugBelch("ptr 0x%p (enable -DDEBUG for more info) " , p );
-}
-  
-void printObj( StgClosure *obj )
-{
-    debugBelch("obj 0x%p (enable -DDEBUG for more info) " , obj );
-}
-
-
-#endif /* DEBUG */
 
 /* -----------------------------------------------------------------------------
    Closure types
