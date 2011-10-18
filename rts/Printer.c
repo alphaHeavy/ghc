@@ -62,7 +62,7 @@ void printObj( StgClosure *obj )
 STATIC_INLINE void
 printStdObjHdr( StgClosure *obj, char* tag )
 {
-    debugBelch("%s(",tag);
+    debugBelch("%s(", tag);
     printPtr((StgPtr)obj->header.info);
 #ifdef PROFILING
     debugBelch(", %s", obj->header.prof.ccs->cc->label);
@@ -81,7 +81,7 @@ printStdObjPayload( StgClosure *obj )
         printPtr((StgPtr)obj->payload[i]);
     }
     for (j = 0; j < info->layout.payload.nptrs; ++j) {
-        debugBelch(", %pd#",obj->payload[i+j]);
+        debugBelch(", %pd#", obj->payload[i+j]);
     }
     debugBelch(")\n");
 }
@@ -98,7 +98,7 @@ printThunkPayload( StgThunk *obj )
         printPtr((StgPtr)obj->payload[i]);
     }
     for (j = 0; j < info->layout.payload.nptrs; ++j) {
-        debugBelch(", %pd#",obj->payload[i+j]);
+        debugBelch(", %pd#", obj->payload[i+j]);
     }
     debugBelch(")\n");
 }
@@ -106,8 +106,8 @@ printThunkPayload( StgThunk *obj )
 static void
 printThunkObject( StgThunk *obj, char* tag )
 {
-    printStdObjHdr( (StgClosure *)obj, tag );
-    printThunkPayload( obj );
+    printStdObjHdr((StgClosure *)obj, tag);
+    printThunkPayload(obj);
 }
 
 void
@@ -118,279 +118,280 @@ printClosure( StgClosure *obj )
     StgInfoTable *info;
     info = get_itbl(obj);
 
-    switch ( info->type ) {
+    switch (info->type) {
     case INVALID_OBJECT:
-            debugBelch("Invalid object\n");
+        debugBelch("Invalid object\n");
 
     case CONSTR:
-    case CONSTR_1_0: case CONSTR_0_1:
-    case CONSTR_1_1: case CONSTR_0_2: case CONSTR_2_0:
+    case CONSTR_1_0:
+    case CONSTR_0_1:
+    case CONSTR_1_1:
+    case CONSTR_0_2:
+    case CONSTR_2_0:
     case CONSTR_STATIC:
-    case CONSTR_NOCAF_STATIC:
-        {
-            StgWord i, j;
-            StgConInfoTable *con_info = get_con_itbl (obj);
+    case CONSTR_NOCAF_STATIC: {
+        StgWord i, j;
+        StgConInfoTable *con_info = get_con_itbl(obj);
 
-            debugBelch("%s(", GET_CON_DESC(con_info));
-            for (i = 0; i < info->layout.payload.ptrs; ++i) {
-		if (i != 0) debugBelch(", ");
-                printPtr((StgPtr)obj->payload[i]);
+        debugBelch("%s(", GET_CON_DESC(con_info));
+        for (i = 0; i < info->layout.payload.ptrs; ++i) {
+            if (i != 0) {
+                debugBelch(", ");
             }
-            for (j = 0; j < info->layout.payload.nptrs; ++j) {
-		if (i != 0 || j != 0) debugBelch(", ");
-                debugBelch("%p#", obj->payload[i+j]);
-            }
-            debugBelch(")\n");
-            break;
+            printPtr((StgPtr)obj->payload[i]);
         }
+        for (j = 0; j < info->layout.payload.nptrs; ++j) {
+            if (i != 0 || j != 0) {
+                debugBelch(", ");
+            }
+            debugBelch("%p#", obj->payload[i+j]);
+        }
+        debugBelch(")\n");
+        break;
+    }
 
     case FUN:
-    case FUN_1_0: case FUN_0_1: 
-    case FUN_1_1: case FUN_0_2: case FUN_2_0:
+    case FUN_1_0:
+    case FUN_0_1: 
+    case FUN_1_1:
+    case FUN_0_2:
+    case FUN_2_0:
     case FUN_STATIC:
-	debugBelch("FUN/%d(",itbl_to_fun_itbl(info)->f.arity);
-	printPtr((StgPtr)obj->header.info);
+        debugBelch("FUN/%d(", itbl_to_fun_itbl(info)->f.arity);
+        printPtr((StgPtr)obj->header.info);
 #ifdef PROFILING
-	debugBelch(", %s", obj->header.prof.ccs->cc->label);
+        debugBelch(", %s", obj->header.prof.ccs->cc->label);
 #endif
-	printStdObjPayload(obj);
-	break;
+        printStdObjPayload(obj);
+        break;
 
     case PRIM:
-	debugBelch("PRIM(");
-	printPtr((StgPtr)obj->header.info);
-	printStdObjPayload(obj);
-	break;
+        debugBelch("PRIM(");
+        printPtr((StgPtr)obj->header.info);
+        printStdObjPayload(obj);
+        break;
 
     case THUNK:
-    case THUNK_1_0: case THUNK_0_1:
-    case THUNK_1_1: case THUNK_0_2: case THUNK_2_0:
+    case THUNK_1_0:
+    case THUNK_0_1:
+    case THUNK_1_1:
+    case THUNK_0_2:
+    case THUNK_2_0:
     case THUNK_STATIC:
-            /* ToDo: will this work for THUNK_STATIC too? */
+        /* ToDo: will this work for THUNK_STATIC too? */
 #ifdef PROFILING
-            printThunkObject((StgThunk *)obj,GET_PROF_DESC(info));
+        printThunkObject((StgThunk *)obj, GET_PROF_DESC(info));
 #else
-            printThunkObject((StgThunk *)obj,"THUNK");
+        printThunkObject((StgThunk *)obj, "THUNK");
 #endif
-            break;
+        break;
 
     case THUNK_SELECTOR:
-	printStdObjHdr(obj, "THUNK_SELECTOR");
-	debugBelch(", %p)\n", ((StgSelector *)obj)->selectee);
-	break;
+        printStdObjHdr(obj, "THUNK_SELECTOR");
+        debugBelch(", %p)\n", ((StgSelector *)obj)->selectee);
+        break;
 
     case BCO:
 #ifdef DEBUG
-            disassemble( (StgBCO*)obj );
+        disassemble((StgBCO*)obj);
 #else
-            debugBelch("BCO\n");
+        debugBelch("BCO\n");
 #endif
-            break;
+        break;
 
-    case AP:
-        {
-	    StgAP* ap = (StgAP*)obj;
-            StgWord i;
-            debugBelch("AP("); printPtr((StgPtr)ap->fun);
-            for (i = 0; i < ap->n_args; ++i) {
-                debugBelch(", ");
-                printPtr((P_)ap->payload[i]);
-            }
-            debugBelch(")\n");
-            break;
+    case AP: {
+        StgAP* ap = (StgAP*)obj;
+        StgWord i;
+        debugBelch("AP("); printPtr((StgPtr)ap->fun);
+        for (i = 0; i < ap->n_args; ++i) {
+            debugBelch(", ");
+            printPtr((P_)ap->payload[i]);
         }
+        debugBelch(")\n");
+        break;
+    }
 
-    case PAP:
-        {
-	    StgPAP* pap = (StgPAP*)obj;
-            StgWord i;
-            debugBelch("PAP/%d(",pap->arity); 
-	    printPtr((StgPtr)pap->fun);
-            for (i = 0; i < pap->n_args; ++i) {
-                debugBelch(", ");
-                printPtr((StgPtr)pap->payload[i]);
-            }
-            debugBelch(")\n");
-            break;
+    case PAP: {
+        StgPAP* pap = (StgPAP*)obj;
+        StgWord i;
+        debugBelch("PAP/%d(", pap->arity); 
+        printPtr((StgPtr)pap->fun);
+        for (i = 0; i < pap->n_args; ++i) {
+            debugBelch(", ");
+            printPtr((StgPtr)pap->payload[i]);
         }
+        debugBelch(")\n");
+        break;
+    }
 
-    case AP_STACK:
-        {
-	    StgAP_STACK* ap = (StgAP_STACK*)obj;
-            StgWord i;
-            debugBelch("AP_STACK("); printPtr((StgPtr)ap->fun);
-            for (i = 0; i < ap->size; ++i) {
-                debugBelch(", ");
-                printPtr((P_)ap->payload[i]);
-            }
-            debugBelch(")\n");
-            break;
+    case AP_STACK: {
+        StgAP_STACK* ap = (StgAP_STACK*)obj;
+        StgWord i;
+        debugBelch("AP_STACK("); printPtr((StgPtr)ap->fun);
+        for (i = 0; i < ap->size; ++i) {
+            debugBelch(", ");
+            printPtr((P_)ap->payload[i]);
         }
+        debugBelch(")\n");
+        break;
+    }
 
     case IND:
-            debugBelch("IND("); 
-            printPtr((StgPtr)((StgInd*)obj)->indirectee);
-            debugBelch(")\n"); 
-            break;
+        debugBelch("IND("); 
+        printPtr((StgPtr)((StgInd*)obj)->indirectee);
+        debugBelch(")\n"); 
+        break;
 
     case IND_PERM:
-            debugBelch("IND("); 
-            printPtr((StgPtr)((StgInd*)obj)->indirectee);
-            debugBelch(")\n"); 
-            break;
+        debugBelch("IND("); 
+        printPtr((StgPtr)((StgInd*)obj)->indirectee);
+        debugBelch(")\n"); 
+        break;
 
     case IND_STATIC:
-            debugBelch("IND_STATIC("); 
-            printPtr((StgPtr)((StgInd*)obj)->indirectee);
-            debugBelch(")\n"); 
-            break;
+        debugBelch("IND_STATIC("); 
+        printPtr((StgPtr)((StgInd*)obj)->indirectee);
+        debugBelch(")\n"); 
+        break;
 
     case BLACKHOLE:
-            debugBelch("BLACKHOLE("); 
-            printPtr((StgPtr)((StgInd*)obj)->indirectee);
-            debugBelch(")\n"); 
-            break;
+        debugBelch("BLACKHOLE("); 
+        printPtr((StgPtr)((StgInd*)obj)->indirectee);
+        debugBelch(")\n"); 
+        break;
 
     case RET_BCO:
-            debugBelch("BCO\n"); 
-            break;
+        debugBelch("BCO\n"); 
+        break;
 
     case RET_SMALL:
-            debugBelch("RET_SMALL\n"); 
-            break;
+        debugBelch("RET_SMALL\n"); 
+        break;
 
     case RET_BIG:
-            debugBelch("RET_BIG\n"); 
-            break;
+        debugBelch("RET_BIG\n"); 
+        break;
 
     case RET_DYN:
-            debugBelch("RET_DYN\n"); 
-            break;
+        debugBelch("RET_DYN\n"); 
+        break;
 
     case RET_FUN:
-            debugBelch("RET_FUN\n"); 
-            break;
+        debugBelch("RET_FUN\n"); 
+        break;
 
-    case UPDATE_FRAME:
-        {
-            StgUpdateFrame* u = (StgUpdateFrame*)obj;
-            debugBelch("UPDATE_FRAME(");
-            printPtr((StgPtr)GET_INFO(u));
-            debugBelch(",");
-            printPtr((StgPtr)u->updatee);
-            debugBelch(")\n"); 
-            break;
-        }
+    case UPDATE_FRAME: {
+        StgUpdateFrame* u = (StgUpdateFrame*)obj;
+        debugBelch("UPDATE_FRAME(");
+        printPtr((StgPtr)GET_INFO(u));
+        debugBelch(",");
+        printPtr((StgPtr)u->updatee);
+        debugBelch(")\n"); 
+        break;
+    }
 
-    case CATCH_FRAME:
-        {
-            StgCatchFrame* u = (StgCatchFrame*)obj;
-            debugBelch("CATCH_FRAME(");
-            printPtr((StgPtr)GET_INFO(u));
-            debugBelch(",");
-            printPtr((StgPtr)u->handler);
-            debugBelch(")\n"); 
-            break;
-        }
+    case CATCH_FRAME: {
+        StgCatchFrame* u = (StgCatchFrame*)obj;
+        debugBelch("CATCH_FRAME(");
+        printPtr((StgPtr)GET_INFO(u));
+        debugBelch(",");
+        printPtr((StgPtr)u->handler);
+        debugBelch(")\n"); 
+        break;
+    }
 
-    case UNDERFLOW_FRAME:
-        {
-            StgUnderflowFrame* u = (StgUnderflowFrame*)obj;
-            debugBelch("UNDERFLOW_FRAME(");
-            printPtr((StgPtr)u->next_chunk);
-            debugBelch(")\n"); 
-            break;
-        }
+    case UNDERFLOW_FRAME: {
+        StgUnderflowFrame* u = (StgUnderflowFrame*)obj;
+        debugBelch("UNDERFLOW_FRAME(");
+        printPtr((StgPtr)u->next_chunk);
+        debugBelch(")\n"); 
+        break;
+    }
 
-    case STOP_FRAME:
-        {
-            StgStopFrame* u = (StgStopFrame*)obj;
-            debugBelch("STOP_FRAME(");
-            printPtr((StgPtr)GET_INFO(u));
-            debugBelch(")\n"); 
-            break;
-        }
+    case STOP_FRAME: {
+        StgStopFrame* u = (StgStopFrame*)obj;
+        debugBelch("STOP_FRAME(");
+        printPtr((StgPtr)GET_INFO(u));
+        debugBelch(")\n"); 
+        break;
+    }
 
-    case ARR_WORDS:
-        {
-            StgWord i;
-            debugBelch("ARR_WORDS(\"");
-	    for (i=0; i<arr_words_words((StgArrWords *)obj); i++)
-	      debugBelch("%02lx", (lnat)((StgArrWords *)obj)->payload[i]);
-            debugBelch("\")\n");
-            break;
+    case ARR_WORDS: {
+        StgWord i;
+        debugBelch("ARR_WORDS(\"");
+        for (i=0; i<arr_words_words((StgArrWords *)obj); i++) {
+            debugBelch("%02lx", (lnat)((StgArrWords *)obj)->payload[i]);
         }
+        debugBelch("\")\n");
+        break;
+    }
 
     case MUT_ARR_PTRS_CLEAN:
-	debugBelch("MUT_ARR_PTRS_CLEAN(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
-	break;
+        debugBelch("MUT_ARR_PTRS_CLEAN(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
+        break;
 
     case MUT_ARR_PTRS_DIRTY:
-	debugBelch("MUT_ARR_PTRS_DIRTY(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
-	break;
+        debugBelch("MUT_ARR_PTRS_DIRTY(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
+        break;
 
     case MUT_ARR_PTRS_FROZEN:
-	debugBelch("MUT_ARR_PTRS_FROZEN(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
-	break;
+        debugBelch("MUT_ARR_PTRS_FROZEN(size=%lu)\n", (lnat)((StgMutArrPtrs *)obj)->ptrs);
+        break;
 
     case MVAR_CLEAN:
-    case MVAR_DIRTY:
-        {
-	  StgMVar* mv = (StgMVar*)obj;
-	  debugBelch("MVAR(head=%p, tail=%p, value=%p)\n", mv->head, mv->tail, mv->value);
-          break;
-        }
+    case MVAR_DIRTY: {
+        StgMVar* mv = (StgMVar*)obj;
+        debugBelch("MVAR(head=%p, tail=%p, value=%p)\n", mv->head, mv->tail, mv->value);
+        break;
+    }
 
-    case MUT_VAR_CLEAN:
-        {
-	  StgMutVar* mv = (StgMutVar*)obj;
-	  debugBelch("MUT_VAR_CLEAN(var=%p)\n", mv->var);
-          break;
-        }
+    case MUT_VAR_CLEAN: {
+        StgMutVar* mv = (StgMutVar*)obj;
+        debugBelch("MUT_VAR_CLEAN(var=%p)\n", mv->var);
+        break;
+    }
 
-    case MUT_VAR_DIRTY:
-        {
-	  StgMutVar* mv = (StgMutVar*)obj;
-	  debugBelch("MUT_VAR_DIRTY(var=%p)\n", mv->var);
-          break;
-        }
+    case MUT_VAR_DIRTY: {
+        StgMutVar* mv = (StgMutVar*)obj;
+        debugBelch("MUT_VAR_DIRTY(var=%p)\n", mv->var);
+        break;
+    }
 
     case WEAK:
-            debugBelch("WEAK("); 
-	    debugBelch(" key=%p value=%p finalizer=%p", 
-		    (StgPtr)(((StgWeak*)obj)->key),
-		    (StgPtr)(((StgWeak*)obj)->value),
-		    (StgPtr)(((StgWeak*)obj)->finalizer));
-            debugBelch(")\n"); 
-	    /* ToDo: chase 'link' ? */
-            break;
+        debugBelch("WEAK("); 
+        debugBelch(" key=%p value=%p finalizer=%p", 
+            (StgPtr)(((StgWeak*)obj)->key),
+            (StgPtr)(((StgWeak*)obj)->value),
+            (StgPtr)(((StgWeak*)obj)->finalizer));
+        debugBelch(")\n"); 
+        /* ToDo: chase 'link' ? */
+        break;
 
     case TSO:
-      debugBelch("TSO("); 
-      debugBelch("%lu (%p)",(unsigned long)(((StgTSO*)obj)->id), (StgTSO*)obj);
-      debugBelch(")\n"); 
-      break;
+        debugBelch("TSO("); 
+        debugBelch("%lu (%p)", (unsigned long)(((StgTSO*)obj)->id), (StgTSO*)obj);
+        debugBelch(")\n"); 
+        break;
 
 #if 0
-      /* Symptomatic of a problem elsewhere, have it fall-through & fail */
+    /* Symptomatic of a problem elsewhere, have it fall-through & fail */
     case EVACUATED:
-      debugBelch("EVACUATED("); 
-      printClosure((StgEvacuated*)obj->evacuee);
-      debugBelch(")\n"); 
-      break;
+        debugBelch("EVACUATED("); 
+        printClosure((StgEvacuated*)obj->evacuee);
+        debugBelch(")\n"); 
+        break;
 #endif
 
     default:
-            debugBelch("*** printClosure: unknown type %d ****\n",
-                    get_itbl(obj)->type );
-            return;
+        debugBelch("*** printClosure: unknown type %d ****\n", get_itbl(obj)->type);
+        return;
     }
 }
 
 /*
 void printGraph( StgClosure *obj )
 {
- printClosure(obj);
+    printClosure(obj);
 }
 */
 
@@ -399,35 +400,29 @@ printStackObj( StgPtr sp )
 {
     /*debugBelch("Stack[%d] = ", &stgStack[STACK_SIZE] - sp); */
 
-        StgClosure* c = (StgClosure*)(*sp);
-        printPtr((StgPtr)*sp);
-        if (c == (StgClosure*)&stg_ctoi_R1p_info) {
-           debugBelch("\t\t\tstg_ctoi_ret_R1p_info\n" );
-	} else
-        if (c == (StgClosure*)&stg_ctoi_R1n_info) {
-           debugBelch("\t\t\tstg_ctoi_ret_R1n_info\n" );
-	} else
-        if (c == (StgClosure*)&stg_ctoi_F1_info) {
-           debugBelch("\t\t\tstg_ctoi_ret_F1_info\n" );
-	} else
-        if (c == (StgClosure*)&stg_ctoi_D1_info) {
-           debugBelch("\t\t\tstg_ctoi_ret_D1_info\n" );
-	} else
-        if (c == (StgClosure*)&stg_ctoi_V_info) {
-           debugBelch("\t\t\tstg_ctoi_ret_V_info\n" );
-	} else
-        if (get_itbl(c)->type == BCO) {
-           debugBelch("\t\t\t");
-           debugBelch("BCO(...)\n"); 
-        }
-        else {
-           debugBelch("\t\t\t");
-           printClosure ( (StgClosure*)(*sp));
-        }
-        sp += 1;
+    StgClosure* c = (StgClosure*)(*sp);
+    printPtr((StgPtr)*sp);
+    if (c == (StgClosure*)&stg_ctoi_R1p_info) {
+        debugBelch("\t\t\tstg_ctoi_ret_R1p_info\n");
+    } else if (c == (StgClosure*)&stg_ctoi_R1n_info) {
+       debugBelch("\t\t\tstg_ctoi_ret_R1n_info\n");
+    } else if (c == (StgClosure*)&stg_ctoi_F1_info) {
+        debugBelch("\t\t\tstg_ctoi_ret_F1_info\n");
+    } else if (c == (StgClosure*)&stg_ctoi_D1_info) {
+        debugBelch("\t\t\tstg_ctoi_ret_D1_info\n");
+    } else if (c == (StgClosure*)&stg_ctoi_V_info) {
+        debugBelch("\t\t\tstg_ctoi_ret_V_info\n");
+    } else if (get_itbl(c)->type == BCO) {
+        debugBelch("\t\t\t");
+        debugBelch("BCO(...)\n"); 
+    } else {
+        debugBelch("\t\t\t");
+        printClosure((StgClosure*)(*sp));
+    }
+
+    sp += 1;
 
     return sp;
-    
 }
 
 static void
@@ -435,13 +430,13 @@ printSmallBitmap( StgPtr spBottom, StgPtr payload, StgWord bitmap, nat size )
 {
     nat i;
 
-    for(i = 0; i < size; i++, bitmap >>= 1 ) {
-	debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-(payload+i)), payload+i);
-	if ((bitmap & 1) == 0) {
-	    printObj((P_)payload[i]);
-	} else {
-	    debugBelch("Word# %lu\n", (lnat)payload[i]);
-	}
+    for (i = 0; i < size; i++, bitmap >>= 1) {
+        debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-(payload+i)), payload+i);
+        if ((bitmap & 1) == 0) {
+            printObj((P_)payload[i]);
+        } else {
+            debugBelch("Word# %lu\n", (lnat)payload[i]);
+        }
     }
 }
 
@@ -449,20 +444,21 @@ static void
 printLargeBitmap( StgPtr spBottom, StgPtr payload, StgLargeBitmap* large_bitmap, nat size )
 {
     StgWord bmp;
-    nat i, j;
+    nat i;
+    nat j;
 
     i = 0;
     for (bmp=0; i < size; bmp++) {
-	StgWord bitmap = large_bitmap->bitmap[bmp];
-	j = 0;
-	for(; i < size && j < BITS_IN(W_); j++, i++, bitmap >>= 1 ) {
-	    debugBelch("   stk[%lu] (%p) = ", (lnat)(spBottom-(payload+i)), payload+i);
-	    if ((bitmap & 1) == 0) {
-		printObj((P_)payload[i]);
-	    } else {
-		debugBelch("Word# %lu\n", (lnat)payload[i]);
-	    }
-	}
+        StgWord bitmap = large_bitmap->bitmap[bmp];
+        j = 0;
+        for (; i < size && j < BITS_IN(W_); j++, i++, bitmap >>= 1) {
+            debugBelch("   stk[%lu] (%p) = ", (lnat)(spBottom-(payload+i)), payload+i);
+            if ((bitmap & 1) == 0) {
+                printObj((P_)payload[i]);
+            } else {
+                debugBelch("Word# %lu\n", (lnat)payload[i]);
+            }
+        }
     }
 }
 
@@ -474,108 +470,107 @@ printStackChunk( StgPtr sp, StgPtr spBottom )
 
     ASSERT(sp <= spBottom);
     for (; sp < spBottom; sp += stack_frame_sizeW((StgClosure *)sp)) {
+        info = get_itbl((StgClosure *)sp);
 
-	info = get_itbl((StgClosure *)sp);
-
-	switch (info->type) {
-	    
-	case UPDATE_FRAME:
-	case CATCH_FRAME:
+        switch (info->type) {
+        case UPDATE_FRAME:
+        case CATCH_FRAME:
         case UNDERFLOW_FRAME:
         case STOP_FRAME:
             printObj((StgClosure*)sp);
-	    continue;
+            continue;
 
-	case RET_DYN:
-	{ 
-	    StgRetDyn* r;
-	    StgPtr p;
-	    StgWord dyn;
-	    nat size;
+        case RET_DYN:
+        { 
+            StgRetDyn* r;
+            StgPtr p;
+            StgWord dyn;
+            nat size;
 
-	    r = (StgRetDyn *)sp;
-	    dyn = r->liveness;
-	    debugBelch("RET_DYN (%p)\n", r);
+            r = (StgRetDyn *)sp;
+            dyn = r->liveness;
+            debugBelch("RET_DYN (%p)\n", r);
 
-	    p = (P_)(r->payload);
-	    printSmallBitmap(spBottom, sp,
-			     RET_DYN_LIVENESS(r->liveness), 
-			     RET_DYN_BITMAP_SIZE);
-	    p += RET_DYN_BITMAP_SIZE + RET_DYN_NONPTR_REGS_SIZE;
+            p = (P_)(r->payload);
+            printSmallBitmap(spBottom, sp,
+            RET_DYN_LIVENESS(r->liveness), 
+            RET_DYN_BITMAP_SIZE);
+            p += RET_DYN_BITMAP_SIZE + RET_DYN_NONPTR_REGS_SIZE;
 
-	    for (size = RET_DYN_NONPTRS(dyn); size > 0; size--) {
-		debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-p), p);
-		debugBelch("Word# %ld\n", (long)*p);
-		p++;
-	    }
-	
-	    for (size = RET_DYN_PTRS(dyn); size > 0; size--) {
-		debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-p), p);
-		printObj(p);
-		p++;
-	    }
-	    continue;
-	}
+            for (size = RET_DYN_NONPTRS(dyn); size > 0; size--) {
+                debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-p), p);
+                debugBelch("Word# %ld\n", (long)*p);
+                p++;
+            }
 
-	case RET_SMALL:
-	    debugBelch("RET_SMALL (%p)\n", info);
-	    bitmap = info->layout.bitmap;
-	    printSmallBitmap(spBottom, sp+1, 
-			     BITMAP_BITS(bitmap), BITMAP_SIZE(bitmap));
-	    continue;
+            for (size = RET_DYN_PTRS(dyn); size > 0; size--) {
+                debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-p), p);
+                printObj(p);
+                p++;
+            }
 
-	case RET_BCO: {
-	    StgBCO *bco;
-	    
-	    bco = ((StgBCO *)sp[1]);
+            continue;
+        }
 
-	    debugBelch("RET_BCO (%p)\n", sp);
-	    printLargeBitmap(spBottom, sp+2,
-			     BCO_BITMAP(bco), BCO_BITMAP_SIZE(bco));
-	    continue;
-	}
+        case RET_SMALL:
+            debugBelch("RET_SMALL (%p)\n", info);
+            bitmap = info->layout.bitmap;
+            printSmallBitmap(spBottom, sp+1, 
+            BITMAP_BITS(bitmap), BITMAP_SIZE(bitmap));
+            continue;
 
-	case RET_BIG:
-	    barf("todo");
+        case RET_BCO: {
+            StgBCO *bco;
 
-	case RET_FUN:
-	{
-	    StgFunInfoTable *fun_info;
-	    StgRetFun *ret_fun;
+            bco = ((StgBCO *)sp[1]);
 
-	    ret_fun = (StgRetFun *)sp;
-	    fun_info = get_fun_itbl(ret_fun->fun);
-	    debugBelch("RET_FUN (%p) (type=%d)\n", ret_fun->fun, fun_info->f.fun_type);
-	    switch (fun_info->f.fun_type) {
-	    case ARG_GEN:
-		printSmallBitmap(spBottom, sp+2,
-				 BITMAP_BITS(fun_info->f.b.bitmap),
-				 BITMAP_SIZE(fun_info->f.b.bitmap));
-		break;
-	    case ARG_GEN_BIG:
-		printLargeBitmap(spBottom, sp+2,
-				 GET_FUN_LARGE_BITMAP(fun_info),
-				 GET_FUN_LARGE_BITMAP(fun_info)->size);
-		break;
-	    default:
-		printSmallBitmap(spBottom, sp+2,
-				 BITMAP_BITS(stg_arg_bitmaps[fun_info->f.fun_type]),
-				 BITMAP_SIZE(stg_arg_bitmaps[fun_info->f.fun_type]));
-		break;
-	    }
-	    continue;
-	}
-	   
-	default:
-	    debugBelch("unknown object %d\n", info->type);
-	}
+            debugBelch("RET_BCO (%p)\n", sp);
+            printLargeBitmap(spBottom, sp+2,
+            BCO_BITMAP(bco), BCO_BITMAP_SIZE(bco));
+            continue;
+        }
+
+        case RET_BIG:
+            barf("todo");
+
+        case RET_FUN:
+        {
+            StgFunInfoTable *fun_info;
+            StgRetFun *ret_fun;
+
+            ret_fun = (StgRetFun *)sp;
+            fun_info = get_fun_itbl(ret_fun->fun);
+            debugBelch("RET_FUN (%p) (type=%d)\n", ret_fun->fun, fun_info->f.fun_type);
+            switch (fun_info->f.fun_type) {
+            case ARG_GEN:
+                printSmallBitmap(spBottom, sp+2,
+                    BITMAP_BITS(fun_info->f.b.bitmap),
+                    BITMAP_SIZE(fun_info->f.b.bitmap));
+                break;
+            case ARG_GEN_BIG:
+                printLargeBitmap(spBottom, sp+2,
+                    GET_FUN_LARGE_BITMAP(fun_info),
+                    GET_FUN_LARGE_BITMAP(fun_info)->size);
+                break;
+            default:
+                printSmallBitmap(spBottom, sp+2,
+                    BITMAP_BITS(stg_arg_bitmaps[fun_info->f.fun_type]),
+                    BITMAP_SIZE(stg_arg_bitmaps[fun_info->f.fun_type]));
+                break;
+            }
+            continue;
+        }
+
+        default:
+            debugBelch("unknown object %d\n", info->type);
+        }
     }
 }
 
 void printTSO( StgTSO *tso )
 {
-    printStackChunk( tso->stackobj->sp,
-                     tso->stackobj->stack+tso->stackobj->stack_size);
+    printStackChunk(tso->stackobj->sp,
+                    tso->stackobj->stack+tso->stackobj->stack_size);
 }
 
 /* --------------------------------------------------------------------------
@@ -615,9 +610,10 @@ static void prepare_table( void )
 
 static void insert( StgWord value, const char *name )
 {
-    if ( table_size >= max_table_size ) {
-        barf( "Symbol table overflow\n" );
+    if (table_size >= max_table_size) {
+        barf("Symbol table overflow\n");
     }
+
     table[table_size].value = value;
     table[table_size].name = name;
     table_size = table_size + 1;
@@ -628,7 +624,7 @@ static void insert( StgWord value, const char *name )
 static rtsBool lookup_name( char *name, StgWord *result )
 {
     nat i;
-    for( i = 0; i < table_size && strcmp(name,table[i].name) != 0; ++i ) {
+    for (i = 0; i < table_size && strcmp(name, table[i].name) != 0; ++i) {
     }
     if (i < table_size) {
         *result = table[i].value;
@@ -692,7 +688,7 @@ static void enZcode( char *in, char *out )
 
     j = 0;
     out[ j++ ] = '_';
-    for( i = 0; in[i] != '\0'; ++i ) {
+    for (i = 0; in[i] != '\0'; ++i) {
         switch (in[i]) {
         case 'Z'  : 
                 out[j++] = 'Z';
@@ -770,7 +766,7 @@ static void enZcode( char *in, char *out )
 const char *lookupGHCName( void *addr )
 {
     nat i;
-    for( i = 0; i < table_size && table[i].value != (StgWord) addr; ++i ) {
+    for (i = 0; i < table_size && table[i].value != (StgWord) addr; ++i) {
     }
     if (i < table_size) {
         return table[i].name;
@@ -783,7 +779,7 @@ static void printZcoded( const char *raw )
 {
     nat j = 0;
     
-    while ( raw[j] != '\0' ) {
+    while (raw[j] != '\0') {
         if (raw[j] == 'Z') {
             debugBelch("%c", unZcode(raw[j+1]));
             j = j + 2;
@@ -821,9 +817,9 @@ static rtsBool isReal( flagword flags STG_UNUSED, const char *name )
     }
 #else
     if (*name == '\0'  || 
-	(name[0] == 'g' && name[1] == 'c' && name[2] == 'c') ||
-	(name[0] == 'c' && name[1] == 'c' && name[2] == '.')) {
-	return rtsFalse;
+       (name[0] == 'g' && name[1] == 'c' && name[2] == 'c') ||
+       (name[0] == 'c' && name[1] == 'c' && name[2] == '.')) {
+        return rtsFalse;
     }
     return rtsTrue;
 #endif
@@ -837,41 +833,41 @@ extern void DEBUG_LoadSymbols( char *name )
     bfd_init();
     abfd = bfd_openr(name, "default");
     if (abfd == NULL) {
-	barf("can't open executable %s to get symbol table", name);
+        barf("can't open executable %s to get symbol table", name);
     }
     if (!bfd_check_format_matches (abfd, bfd_object, &matching)) {
-	barf("mismatch");
+        barf("mismatch");
     }
 
     {
-	long storage_needed;
-	asymbol **symbol_table;
-	long number_of_symbols;
+        long storage_needed;
+        asymbol **symbol_table;
+        long number_of_symbols;
         long num_real_syms = 0;
-	long i;
+        long i;
      
-	storage_needed = bfd_get_symtab_upper_bound (abfd);
+        storage_needed = bfd_get_symtab_upper_bound(abfd);
      
-	if (storage_needed < 0) {
-	    barf("can't read symbol table");
-	}     
+        if (storage_needed < 0) {
+            barf("can't read symbol table");
+        }     
 #if 0
-	if (storage_needed == 0) {
-	    debugBelch("no storage needed");
-	}
+        if (storage_needed == 0) {
+            debugBelch("no storage needed");
+        }
 #endif
-	symbol_table = (asymbol **) stgMallocBytes(storage_needed,"DEBUG_LoadSymbols");
+        symbol_table = (asymbol **) stgMallocBytes(storage_needed, "DEBUG_LoadSymbols");
 
-	number_of_symbols = bfd_canonicalize_symtab (abfd, symbol_table);
+        number_of_symbols = bfd_canonicalize_symtab(abfd, symbol_table);
      
-	if (number_of_symbols < 0) {
-	    barf("can't canonicalise symbol table");
-	}
+        if (number_of_symbols < 0) {
+            barf("can't canonicalise symbol table");
+        }
 
-        for( i = 0; i != number_of_symbols; ++i ) {
+        for (i = 0; i != number_of_symbols; ++i) {
             symbol_info info;
-            bfd_get_symbol_info(abfd,symbol_table[i],&info);
-            /*debugBelch("\t%c\t0x%x      \t%s\n",info.type,(nat)info.value,info.name); */
+            bfd_get_symbol_info(abfd, symbol_table[i], &info);
+            /*debugBelch("\t%c\t0x%x      \t%s\n", info.type, (nat)info.value, info.name); */
             if (isReal(info.type, info.name)) {
                 num_real_syms += 1;
             }
@@ -882,13 +878,13 @@ extern void DEBUG_LoadSymbols( char *name )
                          number_of_symbols, num_real_syms)
                  );
 
-        reset_table( num_real_syms );
+        reset_table(num_real_syms);
     
-        for( i = 0; i != number_of_symbols; ++i ) {
+        for (i = 0; i != number_of_symbols; ++i) {
             symbol_info info;
-            bfd_get_symbol_info(abfd,symbol_table[i],&info);
+            bfd_get_symbol_info(abfd, symbol_table[i], &info);
             if (isReal(info.type, info.name)) {
-                insert( info.value, info.name );
+                insert(info.value, info.name);
             }
         }
 
@@ -906,7 +902,7 @@ extern void DEBUG_LoadSymbols( char *name STG_UNUSED )
 
 #endif /* HAVE_BFD_H */
 
-void findPtr(P_ p, int);		/* keep gcc -Wall happy */
+void findPtr(P_ p, int); /* keep gcc -Wall happy */
 
 int searched = 0;
 
@@ -959,9 +955,9 @@ findPtr(P_ p, int follow)
 
   for (g = 0; g < RtsFlags.GcFlags.generations; g++) {
       bd = generations[g].blocks;
-      i = findPtrBlocks(p,bd,arr,arr_size,i);
+      i = findPtrBlocks(p, bd, arr, arr_size, i);
       bd = generations[g].large_objects;
-      i = findPtrBlocks(p,bd,arr,arr_size,i);
+      i = findPtrBlocks(p, bd, arr, arr_size, i);
       if (i >= arr_size) return;
   }
   if (follow && i == 1) {
@@ -982,8 +978,8 @@ void prettyPrintClosure_ (StgClosure *);
 
 void prettyPrintClosure (StgClosure *obj)
 {
-   prettyPrintClosure_ (obj);
-   debugBelch ("\n");
+    prettyPrintClosure_(obj);
+    debugBelch("\n");
 }
 
 void prettyPrintClosure_ (StgClosure *obj)
@@ -1007,8 +1003,7 @@ void prettyPrintClosure_ (StgClosure *obj)
     info = get_itbl(obj);
 
     /* determine what kind of object we have */
-    switch (info->type) 
-    {
+    switch (info->type) {
         /* full applications of data constructors */
         case CONSTR:
         case CONSTR_1_0: 
@@ -1017,46 +1012,43 @@ void prettyPrintClosure_ (StgClosure *obj)
         case CONSTR_0_2: 
         case CONSTR_2_0:
         case CONSTR_STATIC:
-        case CONSTR_NOCAF_STATIC: 
-        {
-           nat i; 
-           char *descriptor;
+        case CONSTR_NOCAF_STATIC: {
+            nat i; 
+            char *descriptor;
 
-           /* find the con_info for the constructor */
-           con_info = get_con_itbl (obj);
+            /* find the con_info for the constructor */
+            con_info = get_con_itbl(obj);
 
-           /* obtain the name of the constructor */
-           descriptor = GET_CON_DESC(con_info);
+            /* obtain the name of the constructor */
+            descriptor = GET_CON_DESC(con_info);
 
-           debugBelch ("(%s", descriptor);
+            debugBelch("(%s", descriptor);
 
-           /* process the payload of the closure */
-           /* we don't handle non pointers at the moment */
-           for (i = 0; i < info->layout.payload.ptrs; i++)
-           {
-              debugBelch (" ");
-              prettyPrintClosure_ ((StgClosure *) obj->payload[i]);
-           }
-           debugBelch (")");
-           break;
+            /* process the payload of the closure */
+            /* we don't handle non pointers at the moment */
+            for (i = 0; i < info->layout.payload.ptrs; i++) {
+                debugBelch(" ");
+                prettyPrintClosure_((StgClosure *) obj->payload[i]);
+            }
+            debugBelch(")");
+            break;
         }
 
         /* if it isn't a constructor then just print the closure type */
-        default:
-        {
-           debugBelch ("<%s>", info_type(obj));
-           break;
+        default: {
+            debugBelch("<%s>", info_type(obj));
+            break;
         }
     }
 }
 
 const char *
 what_next_strs[] = {
-  [0]               = "(unknown)",
-  [ThreadRunGHC]    = "ThreadRunGHC",
-  [ThreadInterpret] = "ThreadInterpret",
-  [ThreadKilled]    = "ThreadKilled",
-  [ThreadComplete]  = "ThreadComplete"
+    [0]               = "(unknown)",
+    [ThreadRunGHC]    = "ThreadRunGHC",
+    [ThreadInterpret] = "ThreadInterpret",
+    [ThreadKilled]    = "ThreadKilled",
+    [ThreadComplete]  = "ThreadComplete"
 };
 
 /* -----------------------------------------------------------------------------
@@ -1067,81 +1059,81 @@ what_next_strs[] = {
 
 const char *
 closure_type_names[] = {
- [INVALID_OBJECT]        = "INVALID_OBJECT",
- [CONSTR]                = "CONSTR",
- [CONSTR_1_0]            = "CONSTR_1_0",
- [CONSTR_0_1]            = "CONSTR_0_1",
- [CONSTR_2_0]            = "CONSTR_2_0",
- [CONSTR_1_1]            = "CONSTR_1_1",
- [CONSTR_0_2]            = "CONSTR_0_2",
- [CONSTR_STATIC]         = "CONSTR_STATIC",
- [CONSTR_NOCAF_STATIC]   = "CONSTR_NOCAF_STATIC",
- [FUN]                   = "FUN",
- [FUN_1_0]               = "FUN_1_0",
- [FUN_0_1]               = "FUN_0_1",
- [FUN_2_0]               = "FUN_2_0",
- [FUN_1_1]               = "FUN_1_1",
- [FUN_0_2]               = "FUN_0_2",
- [FUN_STATIC]            = "FUN_STATIC",
- [THUNK]                 = "THUNK",
- [THUNK_1_0]             = "THUNK_1_0",
- [THUNK_0_1]             = "THUNK_0_1",
- [THUNK_2_0]             = "THUNK_2_0",
- [THUNK_1_1]             = "THUNK_1_1",
- [THUNK_0_2]             = "THUNK_0_2",
- [THUNK_STATIC]          = "THUNK_STATIC",
- [THUNK_SELECTOR]        = "THUNK_SELECTOR",
- [BCO]                   = "BCO",
- [AP]                    = "AP",
- [PAP]                   = "PAP",
- [AP_STACK]              = "AP_STACK",
- [IND]                   = "IND",
- [IND_PERM]              = "IND_PERM",
- [IND_STATIC]            = "IND_STATIC",
- [RET_BCO]               = "RET_BCO",
- [RET_SMALL]             = "RET_SMALL",
- [RET_BIG]               = "RET_BIG",
- [RET_DYN]               = "RET_DYN",
- [RET_FUN]               = "RET_FUN",
- [UPDATE_FRAME]          = "UPDATE_FRAME",
- [CATCH_FRAME]           = "CATCH_FRAME",
- [UNDERFLOW_FRAME]       = "UNDERFLOW_FRAME",
- [STOP_FRAME]            = "STOP_FRAME",
- [BLACKHOLE]             = "BLACKHOLE",
- [BLOCKING_QUEUE]        = "BLOCKING_QUEUE",
- [MVAR_CLEAN]            = "MVAR_CLEAN",
- [MVAR_DIRTY]            = "MVAR_DIRTY",
- [ARR_WORDS]             = "ARR_WORDS",
- [MUT_ARR_PTRS_CLEAN]    = "MUT_ARR_PTRS_CLEAN",
- [MUT_ARR_PTRS_DIRTY]    = "MUT_ARR_PTRS_DIRTY",
- [MUT_ARR_PTRS_FROZEN0]  = "MUT_ARR_PTRS_FROZEN0",
- [MUT_ARR_PTRS_FROZEN]   = "MUT_ARR_PTRS_FROZEN",
- [MUT_VAR_CLEAN]         = "MUT_VAR_CLEAN",
- [MUT_VAR_DIRTY]         = "MUT_VAR_DIRTY",
- [WEAK]                  = "WEAK",
- [PRIM]	                 = "PRIM",
- [MUT_PRIM]              = "MUT_PRIM",
- [TSO]                   = "TSO",
- [STACK]                 = "STACK",
- [TREC_CHUNK]            = "TREC_CHUNK",
- [ATOMICALLY_FRAME]      = "ATOMICALLY_FRAME",
- [CATCH_RETRY_FRAME]     = "CATCH_RETRY_FRAME",
- [CATCH_STM_FRAME]       = "CATCH_STM_FRAME",
- [WHITEHOLE]             = "WHITEHOLE"
+    [INVALID_OBJECT]        = "INVALID_OBJECT",
+    [CONSTR]                = "CONSTR",
+    [CONSTR_1_0]            = "CONSTR_1_0",
+    [CONSTR_0_1]            = "CONSTR_0_1",
+    [CONSTR_2_0]            = "CONSTR_2_0",
+    [CONSTR_1_1]            = "CONSTR_1_1",
+    [CONSTR_0_2]            = "CONSTR_0_2",
+    [CONSTR_STATIC]         = "CONSTR_STATIC",
+    [CONSTR_NOCAF_STATIC]   = "CONSTR_NOCAF_STATIC",
+    [FUN]                   = "FUN",
+    [FUN_1_0]               = "FUN_1_0",
+    [FUN_0_1]               = "FUN_0_1",
+    [FUN_2_0]               = "FUN_2_0",
+    [FUN_1_1]               = "FUN_1_1",
+    [FUN_0_2]               = "FUN_0_2",
+    [FUN_STATIC]            = "FUN_STATIC",
+    [THUNK]                 = "THUNK",
+    [THUNK_1_0]             = "THUNK_1_0",
+    [THUNK_0_1]             = "THUNK_0_1",
+    [THUNK_2_0]             = "THUNK_2_0",
+    [THUNK_1_1]             = "THUNK_1_1",
+    [THUNK_0_2]             = "THUNK_0_2",
+    [THUNK_STATIC]          = "THUNK_STATIC",
+    [THUNK_SELECTOR]        = "THUNK_SELECTOR",
+    [BCO]                   = "BCO",
+    [AP]                    = "AP",
+    [PAP]                   = "PAP",
+    [AP_STACK]              = "AP_STACK",
+    [IND]                   = "IND",
+    [IND_PERM]              = "IND_PERM",
+    [IND_STATIC]            = "IND_STATIC",
+    [RET_BCO]               = "RET_BCO",
+    [RET_SMALL]             = "RET_SMALL",
+    [RET_BIG]               = "RET_BIG",
+    [RET_DYN]               = "RET_DYN",
+    [RET_FUN]               = "RET_FUN",
+    [UPDATE_FRAME]          = "UPDATE_FRAME",
+    [CATCH_FRAME]           = "CATCH_FRAME",
+    [UNDERFLOW_FRAME]       = "UNDERFLOW_FRAME",
+    [STOP_FRAME]            = "STOP_FRAME",
+    [BLACKHOLE]             = "BLACKHOLE",
+    [BLOCKING_QUEUE]        = "BLOCKING_QUEUE",
+    [MVAR_CLEAN]            = "MVAR_CLEAN",
+    [MVAR_DIRTY]            = "MVAR_DIRTY",
+    [ARR_WORDS]             = "ARR_WORDS",
+    [MUT_ARR_PTRS_CLEAN]    = "MUT_ARR_PTRS_CLEAN",
+    [MUT_ARR_PTRS_DIRTY]    = "MUT_ARR_PTRS_DIRTY",
+    [MUT_ARR_PTRS_FROZEN0]  = "MUT_ARR_PTRS_FROZEN0",
+    [MUT_ARR_PTRS_FROZEN]   = "MUT_ARR_PTRS_FROZEN",
+    [MUT_VAR_CLEAN]         = "MUT_VAR_CLEAN",
+    [MUT_VAR_DIRTY]         = "MUT_VAR_DIRTY",
+    [WEAK]                  = "WEAK",
+    [PRIM]                  = "PRIM",
+    [MUT_PRIM]              = "MUT_PRIM",
+    [TSO]                   = "TSO",
+    [STACK]                 = "STACK",
+    [TREC_CHUNK]            = "TREC_CHUNK",
+    [ATOMICALLY_FRAME]      = "ATOMICALLY_FRAME",
+    [CATCH_RETRY_FRAME]     = "CATCH_RETRY_FRAME",
+    [CATCH_STM_FRAME]       = "CATCH_STM_FRAME",
+    [WHITEHOLE]             = "WHITEHOLE"
 };
 
 const char *
-info_type(StgClosure *closure){ 
-  return closure_type_names[get_itbl(closure)->type];
+info_type(StgClosure *closure) { 
+    return closure_type_names[get_itbl(closure)->type];
 }
 
 const char *
-info_type_by_ip(StgInfoTable *ip){ 
-  return closure_type_names[ip->type];
+info_type_by_ip(StgInfoTable *ip) { 
+    return closure_type_names[ip->type];
 }
 
 void
-info_hdr_type(StgClosure *closure, char *res){ 
-  strcpy(res,closure_type_names[get_itbl(closure)->type]);
+info_hdr_type(StgClosure *closure, char *res) { 
+    strcpy(res, closure_type_names[get_itbl(closure)->type]);
 }
 
