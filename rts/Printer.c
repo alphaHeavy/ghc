@@ -53,7 +53,9 @@ void printPtr( StgPtr p )
   
 void printObj( StgClosure *obj )
 {
-    debugBelch("Object "); printPtr((StgPtr)obj); debugBelch(" = ");
+    debugBelch("Object ");
+    printPtr((StgPtr)obj);
+    debugBelch(" = ");
     printClosure(obj);
 }
 
@@ -118,7 +120,7 @@ printClosure( StgClosure *obj )
 
     switch ( info->type ) {
     case INVALID_OBJECT:
-            barf("Invalid object");
+            debugBelch("Invalid object\n");
 
     case CONSTR:
     case CONSTR_1_0: case CONSTR_0_1:
@@ -249,13 +251,25 @@ printClosure( StgClosure *obj )
             debugBelch(")\n"); 
             break;
 
-    /* Cannot happen -- use default case.
     case RET_BCO:
+            debugBelch("BCO\n"); 
+            break;
+
     case RET_SMALL:
+            debugBelch("RET_SMALL\n"); 
+            break;
+
     case RET_BIG:
+            debugBelch("RET_BIG\n"); 
+            break;
+
     case RET_DYN:
+            debugBelch("RET_DYN\n"); 
+            break;
+
     case RET_FUN:
-    */
+            debugBelch("RET_FUN\n"); 
+            break;
 
     case UPDATE_FRAME:
         {
@@ -302,7 +316,7 @@ printClosure( StgClosure *obj )
             StgWord i;
             debugBelch("ARR_WORDS(\"");
 	    for (i=0; i<arr_words_words((StgArrWords *)obj); i++)
-	      debugBelch("%lu", (lnat)((StgArrWords *)obj)->payload[i]);
+	      debugBelch("%02lx", (lnat)((StgArrWords *)obj)->payload[i]);
             debugBelch("\")\n");
             break;
         }
@@ -367,10 +381,8 @@ printClosure( StgClosure *obj )
 #endif
 
     default:
-            //barf("printClosure %d",get_itbl(obj)->type);
             debugBelch("*** printClosure: unknown type %d ****\n",
                     get_itbl(obj)->type );
-            barf("printClosure %d",get_itbl(obj)->type);
             return;
     }
 }
@@ -426,8 +438,7 @@ printSmallBitmap( StgPtr spBottom, StgPtr payload, StgWord bitmap, nat size )
     for(i = 0; i < size; i++, bitmap >>= 1 ) {
 	debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-(payload+i)), payload+i);
 	if ((bitmap & 1) == 0) {
-	    printPtr((P_)payload[i]);
-	    debugBelch("\n");
+	    printObj((P_)payload[i]);
 	} else {
 	    debugBelch("Word# %lu\n", (lnat)payload[i]);
 	}
@@ -447,8 +458,7 @@ printLargeBitmap( StgPtr spBottom, StgPtr payload, StgLargeBitmap* large_bitmap,
 	for(; i < size && j < BITS_IN(W_); j++, i++, bitmap >>= 1 ) {
 	    debugBelch("   stk[%lu] (%p) = ", (lnat)(spBottom-(payload+i)), payload+i);
 	    if ((bitmap & 1) == 0) {
-		printPtr((P_)payload[i]);
-		debugBelch("\n");
+		printObj((P_)payload[i]);
 	    } else {
 		debugBelch("Word# %lu\n", (lnat)payload[i]);
 	    }
@@ -501,7 +511,7 @@ printStackChunk( StgPtr sp, StgPtr spBottom )
 	
 	    for (size = RET_DYN_PTRS(dyn); size > 0; size--) {
 		debugBelch("   stk[%ld] (%p) = ", (long)(spBottom-p), p);
-		printPtr(p);
+		printObj(p);
 		p++;
 	    }
 	    continue;
@@ -558,7 +568,6 @@ printStackChunk( StgPtr sp, StgPtr spBottom )
 	   
 	default:
 	    debugBelch("unknown object %d\n", info->type);
-	    barf("printStackChunk");
 	}
     }
 }
