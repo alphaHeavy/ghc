@@ -245,6 +245,8 @@ ghcInternalFunctions = sequence_
     , mk "memmove" i8Ptr [i8Ptr, i8Ptr, llvmWord]
     , mk "memset" i8Ptr [i8Ptr, llvmWord, llvmWord]
     , mk "newSpark" llvmWord [i8Ptr, i8Ptr]
+    , mk "llvm.dbg.declare" LMVoid [LMMetaType, LMMetaType]
+    , mk "llvm.dbg.value" LMVoid [LMMetaType, LMMetaType]
     ]
   where
     mk n ret args = do

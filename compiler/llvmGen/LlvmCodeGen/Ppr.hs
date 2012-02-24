@@ -10,6 +10,7 @@ module LlvmCodeGen.Ppr (
 
 import Llvm
 import LlvmCodeGen.Base
+import LlvmCodeGen.CodeGen ( genLlvmDeclare )
 import LlvmCodeGen.Data
 
 import CLabel
@@ -101,8 +102,17 @@ pprLlvmCmmDecl tick_map count (CmmProc mb_info entry_lbl (ListGraph blks))
            lmblocks = map (\(BasicBlock id stmts) ->
                                 LlvmBlock (getUnique id) stmts) blks
            instr = Map.lookup entry_lbl tick_map >>= timInstr
+           -- fooId = ppLlvmFunction (LlvmFunction dec args attrs sec body instr)
 
-       fun <- mkLlvmFunc lbl' link  sec' lmblocks instr
+       declares <- case instr of
+         Just xxxxxx -> genLlvmDeclare (fromIntegral xxxxxx)
+         Nothing     -> return []
+
+       let ((LlvmBlock id stmts):xs) = lmblocks
+           x = LlvmBlock id (declares++stmts)
+           lmblocks' = x:xs
+
+       fun <- mkLlvmFunc lbl' link  sec' lmblocks' instr
 
        return (idoc $+$ ppLlvmFunction fun, ivar)
 

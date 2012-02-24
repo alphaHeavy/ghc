@@ -33,6 +33,7 @@ import MonadUtils      ( MonadIO(..) )
 
 import System.Directory(getCurrentDirectory)
 import Control.Monad   (forM)
+import Data.Bits       ((.|.), (.&.), shiftL)
 import Data.List       (nub, maximumBy)
 import Data.Maybe      (fromMaybe, mapMaybe, catMaybes)
 import Data.Map as Map (Map, fromList, assocs, lookup, elems)
@@ -48,8 +49,9 @@ import Data.Word       (Word16)
 
 lLVMDebugVersion, dW_TAG_compile_unit, dW_TAG_subroutine_type :: Integer
 dW_TAG_file_type, dW_TAG_subprogram, dW_TAG_lexical_block :: Integer
-dW_TAG_base_type :: Integer
-lLVMDebugVersion = 0x80000
+dW_TAG_structure_type, dW_TAG_pointer_type :: Integer
+dW_TAG_base_type, dW_TAG_arg_variable :: Integer
+lLVMDebugVersion = 0x90000
 dW_TAG_compile_unit = 17 + lLVMDebugVersion
 dW_TAG_subroutine_type = 32 + lLVMDebugVersion
 dW_TAG_file_type = 41 + lLVMDebugVersion
@@ -63,8 +65,20 @@ dW_TAG_pointer_type = 15 + lLVMDebugVersion
 dW_LANG_Haskell :: Integer
 dW_LANG_Haskell  = 0x8042 -- Chosen arbitrarily
 
+dI_FLAG_private, dI_FLAG_protected, dI_FLAG_forward_decl :: Integer
+dI_FLAG_private = 1
+dI_FLAG_protected = 2
+dI_FLAG_forward_decl = 4
+-- FlagAppleBlock         = 1 << 3,
+-- FlagBlockByrefStruct   = 1 << 4,
+-- FlagVirtual            = 1 << 5,
+-- FlagArtificial         = 1 << 6,
+-- FlagExplicit           = 1 << 7,
+-- FlagPrototyped         = 1 << 8,
+-- FlagObjcClassComplete  = 1 << 9
+
 pprMeta :: LMMetaInt -> LlvmStatic -> SDoc
-pprMeta n val = pprLlvmData ([LMGlobal (LMMetaVar n) (Just val)], [])
+pprMeta n val = pprLlvmData ([LMGlobal (LMGlobalMeta n) (Just val)], [])
 
 cmmMetaLlvmGens :: DynFlags -> ModLocation -> TickMap -> [RawCmmDecl] -> LlvmM ()
 cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
@@ -110,22 +124,62 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
     , LMMetaRef globalsId                        -- List of global variables
     ]
 
-  -- Subprogram type we use: void (*)()
+  baseRegId <- freshId
+{-
+  renderLlvm $ pprMeta baseRegId $ LMMeta
+    [ LMStaticLit (mkI32 dW_TAG_structure_type)
+    , LMMetaRef unitId                           -- Reference to context
+    , LMMetaString (fsLit "StgRegTable_")        -- Source code name
+    -- for whatever reason LLVM discards forward declarations unless
+    -- they have a file context and a line number greater than 0
+    , LMMetaRef defaultFileId                    -- Reference to file where defined 1
+    , LMStaticLit (mkI32 1)                      -- Line number where defined
+    , LMStaticLit (mkI64 0)                      -- Size in bits 3
+    , LMStaticLit (mkI64 0)                      -- Alignment in bits
+    , LMStaticLit (mkI32 0)                      -- Offset in bits 5
+    , LMStaticLit (mkI32 dI_FLAG_forward_decl)   -- Flags
+    , LMStaticLit (mkI32 0)                      -- Reference to type derived from 7
+    , LMStaticLit (LMNullLit LMMetaType)         -- Reference to array of member descriptors
+    , LMStaticLit (mkI32 0)                      -- Runtime languages 9
+    , LMStaticLit (mkI32 0)                      -- 
+    ]
+-}
+
+  baseRegPtrId <- freshId
+  renderLlvm $ pprMeta baseRegPtrId $ LMMeta
+    [ LMStaticLit (mkI32 dW_TAG_pointer_type)
+    , LMMetaRef unitId                           -- Reference to context
+    , LMMetaString (fsLit "")                    -- Name (may be "" for anonymous types)
+    , LMStaticLit (LMNullLit LMMetaType)         -- Reference to file where defined (may be NULL)
+    , LMStaticLit (mkI32 0)                      -- Line number where defined
+    , LMStaticLit (mkI64 64)                     -- Size in bits XXX: find pointer size
+    , LMStaticLit (mkI64 64)                     -- Alignment in bits XXX: find pointer alignment
+    , LMStaticLit (mkI64 0)                      -- Offset in bits
+    , LMStaticLit (mkI32 0)                      -- Flags to encode attributes, e.g. private
+    , LMMetaRef baseRegId                        -- Reference to type derived from
+    ]
+
+  -- Subprogram type we use: void (*)(StgBaseReg*)
   srtypeId <- freshId
+  srtypeArgsId <- freshId
   renderLlvm $ pprMeta srtypeId $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_subroutine_type)
     , LMMetaRef unitId                           -- Context
-    , LMMetaString (fsLit "")                    -- Name (anonymous)
+    , LMMetaString (fsLit "StgCall")             -- Name (anonymous)
     , LMStaticLit (LMNullLit LMMetaType)         -- File where defined (null)
     , LMStaticLit (mkI32 0)                      -- Line where defined
-    , LMStaticLit (mkI64 0)                      -- Size in bits
-    , LMStaticLit (mkI64 0)                      -- Alignment in bits
+    , LMStaticLit (mkI64 64)                     -- Size in bits
+    , LMStaticLit (mkI64 32)                     -- Alignment in bits
     , LMStaticLit (mkI64 0)                      -- Offset in bits
     , LMStaticLit (mkI32 0)                      -- Flags in bits
     , LMStaticLit (LMNullLit LMMetaType)         -- Type derived from
-    , LMMeta [ LMStaticLit (LMNullLit LMMetaType) ] -- Type list (just void)
+    , LMMetaRef srtypeArgsId                     -- Type list (just void)
     , LMStaticLit (mkI32 0)                      -- Runtime languages (?)
     ]
+
+  srtypeArgsArrayId <- freshId
+  renderLlvm $ pprMeta srtypeArgsId $ LMMeta [LMMetaRef srtypeArgsArrayId]
+  renderLlvm $ pprMeta srtypeArgsArrayId $ LMMeta [LMMetaRef baseRegPtrId]
 
   -- Emit metadata for all files
   let files = nub $ map (srcSpanFile . sourceSpan) $
@@ -153,6 +207,26 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
       fileId <- freshId
       emitFileMeta fileId unitId unitFile
       return fileId
+
+
+  renderLlvm $ pprMeta baseRegId $ LMMeta
+    [ LMStaticLit (mkI32 dW_TAG_structure_type)
+    , LMMetaRef unitId                           -- Reference to context
+    , LMMetaString (fsLit "StgRegTable_")        -- Source code name
+    -- for whatever reason LLVM discards forward declarations unless
+    -- they have a file context and a line number greater than 0
+    , LMMetaRef defaultFileId                    -- Reference to file where defined 1
+    , LMStaticLit (mkI32 1)                      -- Line number where defined
+    , LMStaticLit (mkI64 0)                      -- Size in bits 3
+    , LMStaticLit (mkI64 0)                      -- Alignment in bits
+    , LMStaticLit (mkI32 0)                      -- Offset in bits 5
+    , LMStaticLit (mkI32 dI_FLAG_forward_decl)   -- Flags
+    , LMStaticLit (mkI32 0)                      -- Reference to type derived from 7
+    , LMStaticLit (LMNullLit LMMetaType)         -- Reference to array of member descriptors
+    , LMStaticLit (mkI32 0)                      -- Runtime languages 9
+    , LMStaticLit (mkI32 0)                      -- 
+    ]
+
 
   -- Lookup of procedure Cmm data
   let procMap = Map.fromList [ (l, p) | p@(CmmProc _ l _) <- cmm ]
@@ -188,6 +262,7 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
         -- instrumentation IDs weren't unique per procedure!
         case timInstr tim of
           Just i -> do
+            emitBaseRegMeta (fromIntegral i) procId baseRegPtrId fileId (line, col)
             blockId <- freshId
             renderLlvm $ pprMeta blockId $ LMMeta $
               [ LMStaticLit (mkI32 $ dW_TAG_lexical_block)
@@ -281,6 +356,20 @@ emitProcMeta procId unitId srtypeId entryLabel fileId (line, _) dflags = do
     , LMStaticLit (mkI1 False)                   -- Artificial (?!)
     , LMStaticLit (mkI1 $ optLevel dflags > 0)   -- Optimized
     , LMStaticPointer funRef                     -- Function pointer
+    ]
+
+emitBaseRegMeta :: LMMetaInt -> LMMetaInt -> LMMetaInt -> LMMetaInt -> (Int, Int) -> LlvmM ()
+emitBaseRegMeta argId procId srtypeId fileId (line, _) = do
+  let argLine = (1 `shiftL` 24) .|. (0xFFFFFF .&. line)
+  renderLlvm $ pprMeta (1000000 + argId) $ LMMeta
+    [ LMStaticLit (mkI32 dW_TAG_arg_variable)
+    , LMMetaRef procId                           -- Context
+    , LMMetaString (fsLit "Base_Arg")            -- Name
+    , LMMetaRef fileId                           -- Reference to file where defined
+    , LMStaticLit (mkI32 $ fromIntegral argLine) -- 24 bit - Line number where defined
+                                                 -- 8 bit - Argument number
+    , LMMetaRef srtypeId                         -- Type descriptor
+    , LMStaticLit (mkI32 0)                      -- flags
     ]
 
 -- | Find a "good" tick we could associate the procedure with in the

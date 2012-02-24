@@ -3,11 +3,12 @@
 -- | Handle conversion of CmmProc to LLVM code.
 --
 
-module LlvmCodeGen.CodeGen ( genLlvmProc ) where
+module LlvmCodeGen.CodeGen ( genLlvmProc, genLlvmDeclare ) where
 
 #include "HsVersions.h"
 
 import Llvm
+import Llvm.Types ( LMMetaInt )
 import LlvmCodeGen.Base
 import LlvmCodeGen.Regs
 
@@ -42,6 +43,26 @@ genLlvmProc (CmmProc info lbl (ListGraph blocks)) = do
     return (proc:lmdata)
 
 genLlvmProc _ = panic "genLlvmProc: case that shouldn't reach here!"
+
+genLlvmDeclare :: LMMetaInt -> LlvmM [LlvmStatement]
+genLlvmDeclare procId = do
+    let fname = fsLit "llvm.dbg.declare"
+    let funSig = LlvmFunctionDecl fname ExternallyVisible CC_Ccc LMVoid
+                    FixedArgs (tysToParams [LMMetaType, LMMetaType]) llvmFunAlign
+    let fty = LMFunction funSig
+
+    let fv  = LMGlobalVar fname fty (funcLinkage funSig) Nothing Nothing False
+
+    barrFn <- funLookup fname
+    let tops = case barrFn of
+                    Just _  -> []
+                    Nothing -> [CmmData Data [([],[fty])]]
+
+    let args = [LMMetaLit (lmGlobalRegArg BaseReg), LMMetaVar (procId + 1000000)]
+    let s1 = Expr $ Call StdCall fv args llvmStdFunAttrs
+    funInsert fname fty
+
+    return [s1]
 
 -- -----------------------------------------------------------------------------
 -- * Block code generation

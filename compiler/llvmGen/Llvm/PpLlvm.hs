@@ -78,7 +78,7 @@ ppLlvmGlobal (LMGlobal var@(LMGlobalVar _ _ link x a c) dat) =
 
     in ppAssignment var $ ppr link <+> const' <+> rhs <> sect <> align
 
-ppLlvmGlobal (LMGlobal var@(LMMetaVar _) (Just val)) =
+ppLlvmGlobal (LMGlobal var@(LMGlobalMeta _) (Just val)) =
   ppAssignment var (ppr val)
 
 ppLlvmGlobal (LMGlobal var@(LMNamedMeta _) (Just val)) =
