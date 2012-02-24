@@ -58,11 +58,32 @@ genLlvmDeclare procId = do
                     Just _  -> []
                     Nothing -> [CmmData Data [([],[fty])]]
 
-    let args = [LMMetaLit (lmGlobalRegArg BaseReg), LMMetaVar (procId + 1000000)]
-    let s1 = Expr $ Call StdCall fv args llvmStdFunAttrs
+    let argList =
+          [ (1, BaseReg)
+          -- 2, Sp
+          -- 3, Hp
+          , (4, VanillaReg 1 VGcPtr)
+          , (5, VanillaReg 2 VGcPtr)
+          , (6, VanillaReg 3 VGcPtr)
+          , (7, VanillaReg 4 VGcPtr)
+          , (8, VanillaReg 5 VGcPtr)
+          , (9, VanillaReg 6 VGcPtr)
+          -- , (10, SpLim)
+          , (11, FloatReg 1)
+          , (12, FloatReg 2)
+          , (13, FloatReg 3)
+          , (14, FloatReg 4)
+          , (15, DoubleReg 1)
+          , (16, DoubleReg 2)
+          ]
+
+        declareArg (argNum, reg) = e where
+          e = Expr $ Call StdCall fv args llvmStdFunAttrs
+          args = [LMMetaLit (lmGlobalRegArg reg), LMMetaVar (procId + (argNum * 1000000))]
+
     funInsert fname fty
 
-    return [s1]
+    return $ map declareArg argList
 
 -- -----------------------------------------------------------------------------
 -- * Block code generation
