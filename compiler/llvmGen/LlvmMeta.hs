@@ -130,29 +130,6 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
     , LMMetaRef globalsId                        -- List of global variables
     ]
 
-  --  <- freshId
-{-
-  renderLlvm $ pprMeta baseRegId $ LMMeta
-    [ LMStaticLit (mkI32 dW_TAG_structure_type)
-    , LMMetaRef unitId                           -- Reference to context
-    , LMMetaString (fsLit "StgRegTable_")        -- Source code name
-    -- for whatever reason LLVM discards forward declarations unless
-    -- they have a file context and a line number greater than 0
-    , LMMetaRef defaultFileId                    -- Reference to file where defined 1
-    , LMStaticLit (mkI32 1)                      -- Line number where defined
-    , LMStaticLit (mkI64 0)                      -- Size in bits 3
-    , LMStaticLit (mkI64 0)                      -- Alignment in bits
-    , LMStaticLit (mkI32 0)                      -- Offset in bits 5
-    , LMStaticLit (mkI32 dI_FLAG_forward_decl)   -- Flags
-    , LMStaticLit (mkI32 0)                      -- Reference to type derived from 7
-    , LMStaticLit (LMNullLit LMMetaType)         -- Reference to array of member descriptors
-    , LMStaticLit (mkI32 0)                      -- Runtime languages 9
-    , LMStaticLit (mkI32 0)                      -- 
-    ]
--}
-
-
-
   -- Subprogram type we use: void (*)(StgBaseReg*)
   srtypeId <- freshId
   srtypeArgsId <- freshId
@@ -226,8 +203,9 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
         let entryLabel = case infos of
               Nothing               -> lbl
               Just (Statics lbl' _) -> lbl'
+            contextId = fromMaybe unitId (fmap fromIntegral (timParent tim))
         procId <- freshId
-        emitProcMeta procId unitId srtypeId entryLabel fileId loc dflags
+        emitProcMeta procId contextId srtypeId entryLabel fileId loc dflags
 
         -- Generate source annotation using the given ID (this is used to
         -- reference it from LLVM code). This information has little
@@ -305,7 +283,7 @@ emitFileMeta fileId unitId filePath = do
 
 emitProcMeta :: LMMetaInt -> LMMetaInt -> LMMetaInt -> CLabel -> LMMetaInt
              -> (Int, Int) -> DynFlags -> LlvmM ()
-emitProcMeta procId unitId srtypeId entryLabel fileId (line, _) dflags = do
+emitProcMeta procId contextId srtypeId entryLabel fileId (line, _) dflags = do
   -- it seems like LLVM 3.0 (likely 2.x as well) ignores the procedureName
   -- procedureName <- strProcedureName_llvm entryLabel
   linkageName <- strCLabel_llvm entryLabel
@@ -318,7 +296,7 @@ emitProcMeta procId unitId srtypeId entryLabel fileId (line, _) dflags = do
   renderLlvm $ pprMeta procId $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_subprogram)
     , LMStaticLit (mkI32 0)                      -- "Unused"
-    , LMMetaRef unitId                           -- Reference to compile unit
+    , LMMetaRef contextId                        -- Reference to context descriptor
     , LMMetaString procedureName                 -- Procedure name
     , LMMetaString displayName                   -- Display name
     , LMMetaString linkageName                   -- MIPS name
