@@ -68,7 +68,7 @@ llvmCodeGen' dflags location cmms tick_map
         {-# SCC "llvm_procs_gen" #-}
           cmmProcLlvmGens dflags cmm tick_map 1
         cmmMetaLlvmGens dflags location tick_map cmm
-        cmmDebugLlvmGens dflags location tick_map cmm
+        -- cmmDebugLlvmGens dflags location tick_map cmm
 
         cmmUsedLlvmGens
 
@@ -127,7 +127,7 @@ cmmLlvmGen dflags tick_map count cmm = do
 
     -- print to buffer, dump if requested
     let pp = pprLlvmCmmDecl tick_map count
-    (docs, ivars) <- fmap unzip $ mapM pp llvmBC
+    (docs, ivars) <- mapAndUnzipM pp llvmBC
     liftIO $ dumpIfSet_dyn dflags Opt_D_dump_llvm "LLVM Code" (vcat docs)
 
     -- Output, note down used variables
