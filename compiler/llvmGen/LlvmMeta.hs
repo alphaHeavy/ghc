@@ -86,6 +86,13 @@ dI_FLAG_objc_class_complete = 0x200
 pprMeta :: LMMetaInt -> LlvmStatic -> SDoc
 pprMeta n val = pprLlvmData ([LMGlobal (LMGlobalMeta n) (Just val)], [])
 
+-- | Prints the given metadata to the output handle
+renderMeta :: LlvmStatic -> LlvmM LMMetaInt
+renderMeta lmm = do
+    metaId <- getMetaUniqueId
+    renderLlvm $ pprMeta metaId lmm
+    return metaId
+
 cmmMetaLlvmGens :: DynFlags -> ModLocation -> TickMap -> [RawCmmDecl] -> LlvmM ()
 cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
 
@@ -106,13 +113,12 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
   let srcFile  = fromMaybe "" (ml_hs_file mod_loc)
       producerName = cProjectName ++ " " ++ cProjectVersion
 
-  unitId <- freshId
   enumTypesId <- freshId
   retainedTypesId <- freshId
   subprogramsId <- freshId
   globalsId <- freshId
 
-  renderLlvm $ pprMeta unitId $ LMMeta
+  unitId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_compile_unit)
     , LMStaticLit (LMNullLit LMMetaType)         -- "unused"
     , LMStaticLit (mkI32 dW_LANG_Haskell)        -- DWARF language identifier
@@ -131,9 +137,8 @@ cmmMetaLlvmGens dflags mod_loc tiMap cmm = do
     ]
 
   -- Subprogram type we use: void (*)(StgBaseReg*)
-  srtypeId <- freshId
   srtypeArgsId <- freshId
-  renderLlvm $ pprMeta srtypeId $ LMMeta
+  srtypeId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_subroutine_type)
     , LMMetaRef unitId                           -- Context
     , LMMetaString (fsLit "StgCall")             -- Name (anonymous)
@@ -333,22 +338,6 @@ emitArgumentsMeta primitives argId procId fileId loc = do
   emitRegMeta 15 "D1" argId procId (stgDoubleId primitives) fileId loc
   emitRegMeta 16 "D2" argId procId (stgDoubleId primitives) fileId loc
 
-{-
-emitBaseRegMeta :: LMMetaInt -> LMMetaInt -> LMMetaInt -> LMMetaInt -> (Int, Int) -> LlvmM ()
-emitBaseRegMeta argId procId srtypeId fileId (line, _) = do
-  let argLine = (1 `shiftL` 24) .|. (0xFFFFFF .&. line)
-  renderLlvm $ pprMeta (1000000 + argId) $ LMMeta
-    [ LMStaticLit (mkI32 dW_TAG_arg_variable)
-    , LMMetaRef procId                           -- Context
-    , LMMetaString (fsLit "BaseReg")             -- Name
-    , LMMetaRef fileId                           -- Reference to file where defined
-    , LMStaticLit (mkI32 $ fromIntegral argLine) -- 24 bit - Line number where defined
-                                                 -- 8 bit - Argument number
-    , LMMetaRef srtypeId                         -- Type descriptor
-    , LMStaticLit (mkI32 0)                      -- flags
-    ]
--}
-
 emitRegMeta :: Int -> String -> LMMetaInt -> LMMetaInt -> LMMetaInt -> LMMetaInt -> (Int, Int) -> LlvmM ()
 emitRegMeta argNum argName argId procId typeId fileId (line, _) = do
   let argLine = (argNum `shiftL` 24) .|. (0xFFFFFF .&. line)
@@ -372,13 +361,7 @@ data StgPrimitives = StgPrimitives
 
 emitStgPrimitivesMeta :: LMMetaInt -> LMMetaInt -> LlvmM StgPrimitives
 emitStgPrimitivesMeta unitId defaultFileId = do
-  baseRegId <- getMetaUniqueId
-  baseRegPtrId <- getMetaUniqueId
-  intId <- getMetaUniqueId
-  floatId <- getMetaUniqueId
-  doubleId <- getMetaUniqueId
-
-  renderLlvm $ pprMeta baseRegId $ LMMeta
+  baseRegId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_structure_type)
     , LMMetaRef unitId                           -- Reference to context
     , LMMetaString (fsLit "StgRegTable_")        -- Source code name
@@ -396,7 +379,7 @@ emitStgPrimitivesMeta unitId defaultFileId = do
     , LMStaticLit (mkI32 0)                      -- 
     ]
 
-  renderLlvm $ pprMeta baseRegPtrId $ LMMeta
+  baseRegPtrId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_pointer_type)
     , LMMetaRef unitId                           -- Reference to context
     , LMMetaString (fsLit "")                    -- Name (may be "" for anonymous types)
@@ -410,7 +393,7 @@ emitStgPrimitivesMeta unitId defaultFileId = do
     ]
 
   let dW_ATE_signed        = 5
-  renderLlvm $ pprMeta intId $ LMMeta
+  intId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_base_type)
     , LMMetaRef unitId                           -- Reference to context
     , LMMetaString (fsLit "StgInt")              -- Source code name
@@ -424,7 +407,7 @@ emitStgPrimitivesMeta unitId defaultFileId = do
     ]
 
   let dW_ATE_float         = 4
-  renderLlvm $ pprMeta floatId $ LMMeta
+  floatId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_base_type)
     , LMMetaRef unitId                           -- Reference to context
     , LMMetaString (fsLit "StgFloat")            -- Source code name
@@ -437,7 +420,7 @@ emitStgPrimitivesMeta unitId defaultFileId = do
     , LMStaticLit (mkI32 dW_ATE_float)           -- DWARF type encoding
     ]
 
-  renderLlvm $ pprMeta doubleId $ LMMeta
+  doubleId <- renderMeta $ LMMeta
     [ LMStaticLit (mkI32 dW_TAG_base_type)
     , LMMetaRef unitId                           -- Reference to context
     , LMMetaString (fsLit "StgDouble")           -- Source code name
