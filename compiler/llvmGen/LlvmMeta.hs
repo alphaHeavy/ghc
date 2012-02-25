@@ -323,20 +323,20 @@ emitArgumentsMeta primitives argId procId fileId loc = do
   emitRegMeta 1 "BaseReg" argId procId (stgRegTableId primitives) fileId loc
   -- int64_t* restrict sp,
   -- int64_t* restrict hp,
-  emitRegMeta 4 "R1" argId procId (stgIntId primitives) fileId loc
-  emitRegMeta 5 "R2" argId procId (stgIntId primitives) fileId loc
-  emitRegMeta 6 "R3" argId procId (stgIntId primitives) fileId loc
-  emitRegMeta 7 "R4" argId procId (stgIntId primitives) fileId loc
-  emitRegMeta 8 "R5" argId procId (stgIntId primitives) fileId loc
-  emitRegMeta 9 "R6" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 4 "R1" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 5 "R2" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 6 "R3" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 7 "R4" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 8 "R5" argId procId (stgIntId primitives) fileId loc
+  -- emitRegMeta 9 "R6" argId procId (stgIntId primitives) fileId loc
   --  int64_t* restrict spLim,
-  emitRegMeta 11 "F1" argId procId (stgFloatId primitives) fileId loc
-  emitRegMeta 12 "F2" argId procId (stgFloatId primitives) fileId loc
-  emitRegMeta 13 "F3" argId procId (stgFloatId primitives) fileId loc
-  emitRegMeta 14 "F4" argId procId (stgFloatId primitives) fileId loc
+  -- emitRegMeta 11 "F1" argId procId (stgFloatId primitives) fileId loc
+  -- emitRegMeta 12 "F2" argId procId (stgFloatId primitives) fileId loc
+  -- emitRegMeta 13 "F3" argId procId (stgFloatId primitives) fileId loc
+  -- emitRegMeta 14 "F4" argId procId (stgFloatId primitives) fileId loc
 
-  emitRegMeta 15 "D1" argId procId (stgDoubleId primitives) fileId loc
-  emitRegMeta 16 "D2" argId procId (stgDoubleId primitives) fileId loc
+  -- emitRegMeta 15 "D1" argId procId (stgDoubleId primitives) fileId loc
+  -- emitRegMeta 16 "D2" argId procId (stgDoubleId primitives) fileId loc
 
 emitRegMeta :: Int -> String -> LMMetaInt -> LMMetaInt -> LMMetaInt -> LMMetaInt -> (Int, Int) -> LlvmM ()
 emitRegMeta argNum argName argId procId typeId fileId (line, _) = do
